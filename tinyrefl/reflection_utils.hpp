@@ -71,4 +71,25 @@ inline constexpr bool is_float = std::is_floating_point_v<T>;
 template <typename T>
 inline constexpr bool is_double = std::is_same_v<double, T> && std::is_same_v<T, double>;
 
+// get members name strings
+template <auto val>
+inline consteval std::string_view get_member_name() {
+	std::string_view funcName = __FUNCSIG__;
+	size_t begin = funcName.rfind("->") + 2;
+	size_t end = funcName.rfind(">(");
+	return funcName.substr(begin, end - begin);
+}
+
+template <auto index, auto tuple>
+inline constexpr std::string_view get_member_name_v = get_member_name<&std::get<index>(tuple)>();
+
+// get members type strings
+template <typename T>
+inline consteval std::string_view get_member_type_name() {
+	std::string_view funcName = __FUNCSIG__;
+	size_t start = funcName.find("get_member_type_name<");
+	size_t end = funcName.find("(void)");
+	return funcName.substr(start + 21, end - start - 22);
+}
+
 }

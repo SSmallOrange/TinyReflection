@@ -14,6 +14,6 @@ struct Person {
 };
 
 namespace tinyrefl {
+	// get members name strings
 
 }  // end namespace tinyrefl
-

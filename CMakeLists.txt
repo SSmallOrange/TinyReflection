@@ -9,12 +9,14 @@ include_directories(${CMAKE_SOURCE_DIR})
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(test_check_type 
-    ${TEST_PATH}/test_check_type.cpp)
+# add_executable(test_check_type 
+#     ${TEST_PATH}/test_check_type.cpp)
 
-add_executable(test_get_member_count 
-    ${TEST_PATH}/test_get_member_count.cpp)
+# add_executable(test_get_member_count 
+#     ${TEST_PATH}/test_get_member_count.cpp)
+
+add_executable(test_get_member_value 
+    ${TEST_PATH}/test_get_member_value.cpp)
     
-add_executable(test_get_member_string_and_type_string 
-    ${TEST_PATH}/test_get_member_string_and_type_string.cpp)
-
+# add_executable(test_get_member_string_and_type_string 
+#     ${TEST_PATH}/test_get_member_string_and_type_string.cpp)
