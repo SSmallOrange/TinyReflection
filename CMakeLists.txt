@@ -15,8 +15,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # add_executable(test_get_member_count 
 #     ${TEST_PATH}/test_get_member_count.cpp)
 
-add_executable(test_get_member_value 
-    ${TEST_PATH}/test_get_member_value.cpp)
+# add_executable(test_get_member_value 
+#     ${TEST_PATH}/test_get_member_value.cpp)
     
 # add_executable(test_get_member_string_and_type_string 
 #     ${TEST_PATH}/test_get_member_string_and_type_string.cpp)
+
+add_executable(test_reflection_to_json 
+     ${TEST_PATH}/test_reflection_to_json.cpp)

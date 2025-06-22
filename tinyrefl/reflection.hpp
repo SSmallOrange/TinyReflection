@@ -10,7 +10,7 @@
 struct Person {
 	std::string m_name;	
 	int m_age;
-	bool m_male;
+	int m_male;
 };
 
 namespace tinyrefl {
