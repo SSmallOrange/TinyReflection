@@ -17,32 +17,121 @@ inline constexpr T& get_global_value() {
 	return Wrapper<remove_cvref_t<T>>::_value;
 }
 
-// get members count
-template <typename T>
-struct AnyType {
-	template <typename T>
+struct Any {
+    constexpr Any(int) {}
+
+    template <typename T>
+    requires(std::is_copy_constructible_v<T>)
+    operator T&();
+
+    template <typename T>
+    requires(std::is_move_constructible_v<T> && !std::is_copy_constructible_v<T>)
+    operator T&&();
+
+    struct Empty{};
+
+    template <typename T>
+    requires(!std::is_copy_constructible_v<T> && !std::is_move_constructible_v<T> && !std::is_constructible_v<T, Empty>)
     operator T();
-};
+}; 
 
-template <typename T, typename construct_param_t, typename = void, typename... Args> 
-struct is_constructable  : std::false_type {};
-template <typename T, typename construct_param_t, typename... Args> 
-struct is_constructable<T, construct_param_t, std::void_t<decltype(T{std::declval<Args>()..., construct_param_t{}})>, Args...> : std::true_type {};
+template<typename T, std::size_t N>
+constexpr auto test() {
+    return []<std::size_t... I>(std::index_sequence<I...>) {
+        return requires{ T{ Any(I)... }; };
+    }(std::make_index_sequence<N>{});
+}
 
-template <typename T, typename construct_param_t, typename... Args>
-constexpr bool is_constructable_v = is_constructable<T, construct_param_t, void, Args...>::value;
+template<typename T, int N = 0>
+constexpr auto member_count() {
+    if constexpr (test<T, N>() && !test<T, N + 1>()) {
+        return N;
+    } else {
+        return member_count<T, N + 1>();
+    }
+}
 
-template <typename T, typename... Args>
-inline constexpr std::size_t members_count_impl() {
-	if constexpr (is_constructable_v<T, AnyType<T>, Args...>) {
-		return members_count_impl<T, Args..., AnyType<T>>();
-	} else {
-		return sizeof...(Args);
-	}
+template<typename T, std::size_t N1, std::size_t N2, std::size_t N3>
+constexpr bool test_three_parts() {
+    return []<std::size_t... I1, std::size_t... I2, std::size_t... I3>(std::index_sequence<I1...>,
+                                                                       std::index_sequence<I2...>,
+                                                                       std::index_sequence<I3...>) {
+        return requires{ T{ Any(I1)..., { Any(I2)... }, Any(I3)... }; };
+    }(std::make_index_sequence<N1>{}, std::make_index_sequence<N2>{}, std::make_index_sequence<N3>{});
+}
+
+// try insert N Ant{} to pos
+template<typename T, std::size_t position, std::size_t N>
+constexpr bool try_place_n_in_pos() {
+    constexpr auto Total = member_count<T>();
+    if constexpr (N == 0) {
+        return true;
+    } else if constexpr (position + N <= Total) {
+        return test_three_parts<T, position, N, Total - position - N>();
+    } else {
+        return false;
+    }
+}
+
+// try pos max count
+template <typename T, std::size_t pos, std::size_t N = 0, std::size_t Max = 10>
+constexpr bool has_extra_elements() {
+    constexpr auto Total = member_count<T>();
+    if constexpr (test_three_parts<T, pos, N, Total - pos - 1>()) {
+        return false;
+    } else if constexpr (N + 1 <= Max) {
+        return has_extra_elements<T, pos, N + 1>();
+    } else {
+        return true;
+    }
+}
+
+template<typename T, std::size_t pos, std::size_t N = 0>
+constexpr auto search_max_in_pos() {
+    constexpr auto Total = member_count<T>();
+    if constexpr (!has_extra_elements<T, pos>()) {
+        return 1;
+    } else {
+        std::size_t result = 0;
+        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            ((try_place_n_in_pos<T, pos, Is>() ? result = Is : 0), ...);
+        }(std::make_index_sequence<Total + 1>());
+        return result;
+    }
+}
+
+template<typename T, std::size_t N = 0>
+constexpr auto search_all_extra_index(auto&& array) {
+    constexpr auto total = member_count<T>();
+    constexpr auto num = search_max_in_pos<T, N>();
+    constexpr auto value = num > 1 ? num : 1;
+    array[N] = value;
+    if constexpr (N + value < total) {
+        search_all_extra_index<T, N + value>(array);
+    }
+}
+
+template<typename T>
+constexpr auto true_member_count() {
+    constexpr auto Total = member_count<T>();
+    if constexpr (Total == 0) {
+        return 0;
+    } else {
+        std::array<std::size_t, Total> indices = { 1 };
+        search_all_extra_index<T>(indices);
+        std::size_t result = Total;
+        std::size_t index = 0;
+        while (index < Total) {
+            auto n = indices[index];
+            result -= n - 1;
+            index += n;
+        }
+        return result;
+    }
 }
 
 template <typename T>
-inline constexpr std::size_t members_count_v = members_count_impl<remove_cvref_t<T>>();
+inline constexpr std::size_t members_count_v = true_member_count<remove_cvref_t<T>>();
 
 // get members tuple
 template <typename T>
@@ -68,17 +157,17 @@ struct get_member_references_tuple {
 	}
 };
 
-#define GET_MEMBER_TUPLE_HELPER(n, ...) 					\
-template <AggregateType T>   								\
-struct get_member_references_tuple<T, n> { 					\
-	inline static constexpr auto get_tuple() {  	   		\
-		auto& [__VA_ARGS__] = get_global_value<T>();		\
-		return std::tie(__VA_ARGS__);						\
-	}   													\
+#define GET_MEMBER_TUPLE_HELPER(n, ...) 						\
+template <AggregateType T>   									\
+struct get_member_references_tuple<T, n> { 						\
+	inline static constexpr auto get_tuple() {  	   			\
+		auto& [__VA_ARGS__] = get_global_value<T>();			\
+		return std::tie(__VA_ARGS__);							\
+	}   														\
 	inline static decltype(auto) get_reference_value(T&& t) {   \
 		auto&& [__VA_ARGS__] = std::forward<T>(t);				\
 		return std::tie(__VA_ARGS__);							\
-	}											\
+	}															\
 };															
 
 GET_MEMBER_TUPLE_HELPER(1, m1)
@@ -86,6 +175,10 @@ GET_MEMBER_TUPLE_HELPER(2, m1, m2)
 GET_MEMBER_TUPLE_HELPER(3, m1, m2, m3)
 GET_MEMBER_TUPLE_HELPER(4, m1, m2, m3, m4)
 GET_MEMBER_TUPLE_HELPER(5, m1, m2, m3, m4, m5)
+GET_MEMBER_TUPLE_HELPER(6, m1, m2, m3, m4, m5, m6)
+GET_MEMBER_TUPLE_HELPER(7, m1, m2, m3, m4, m5, m6, m7)
+GET_MEMBER_TUPLE_HELPER(8, m1, m2, m3, m4, m5, m6, m7, m8)
+GET_MEMBER_TUPLE_HELPER(9, m1, m2, m3, m4, m5, m6, m7, m8, m9)
 
 template <AggregateType T>
 using member_array = std::array<std::string_view, members_count_v<remove_cvref_t<T>>>;
@@ -114,6 +207,5 @@ inline decltype(auto) struct_member_reference(T&& t) {
     constexpr size_t count = members_count_v<U>;
 	static_assert(Index < count, "Index out of range");
 	return std::get<Index>(get_member_references_tuple<T, count>::get_reference_value(std::forward<T>(t)));
-	// return get_member_reference_value<Index, count, T>::get_reference_value(std::forward<T>(t));
 }
 }

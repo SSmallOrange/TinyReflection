@@ -1,6 +1,13 @@
 #include "tinyrefl/reflection_get_tuple.hpp"
 
+#include <format>
+
 namespace tinyrefl {
+template<typename Stream>
+concept OutputStream = requires(Stream& s) {
+    { s.append("abc") };
+};
+
 template <typename T, typename Function>
 inline void for_each_member(T&& object, Function&& function) {
     using object_type = remove_cvref_t<T>;
@@ -12,10 +19,6 @@ inline void for_each_member(T&& object, Function&& function) {
         return;
     }
 
-    // [&]<size_t... Is>(std::index_sequence<Is...>) {
-    //     (function(struct_member_reference<Is>(object), object_name_array[Is], Is), ...);
-    // }(std::make_index_sequence<object_member_count>{});
-
     if constexpr (std::is_invocable_v<Function, decltype(struct_member_reference<0>(object)), std::string_view, size_t>) {
         [&]<size_t... Is>(std::index_sequence<Is...>) {
             (function(struct_member_reference<Is>(object), object_name_array[Is], Is), ...);
@@ -25,4 +28,23 @@ inline void for_each_member(T&& object, Function&& function) {
             param is: [std::string_view, size_t]");
     }
 }
+
+template <OutputStream Stream, typename Iter, typename Delimiter, typename Function>
+requires requires(Iter&& iter) { *iter; ++iter;}
+inline void for_each_by_iterator(Stream&& s, Iter first, Iter end, const Delimiter& delimiter, Function&& function) {
+    if (first == end) {
+        return;
+    }
+    for (; first != end; ++first) {
+        if constexpr (std::is_invocable_v<Function, decltype(*first)>) {
+            function(*first);
+        } else {
+            static_assert(std::is_invocable_v<Function, decltype(*first)>, "invalid function args");
+        }
+        if (std::next(first) != end) {
+            s.append(delimiter);
+        }
+    }
+}
+
 }  // end namespace tinyrefl

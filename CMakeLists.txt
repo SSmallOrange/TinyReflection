@@ -23,3 +23,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(test_reflection_to_json 
      ${TEST_PATH}/test_reflection_to_json.cpp)
+
+# add_executable(main 
+#      ${TEST_PATH}/main.cpp)
