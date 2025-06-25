@@ -63,10 +63,12 @@ template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_associative_container_v<T> {
     s.append("{");
     for_each_by_iterator(s, object.cbegin(), object.cend(), ",", [&](const auto& pair_value) {  // std::pair
-        if constexpr (requires(std::is_string_v<decltype(pair_value.first)>)) {
+        if constexpr (is_string_v<decltype(pair_value.first)>) {
             to_json_key(s, pair_value.first);
+            s.append(":");
+            to_json_value(s, pair_value.second);
         } else {
-            static_assert(requires(std::is_string_v<decltype(pair_value.first)>), "");
+            static_assert(is_string_v<decltype(pair_value.first)>, "Only string keys are supported in JSON");
         }
     });
     s.append("}");

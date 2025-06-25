@@ -29,8 +29,7 @@ template <typename T>
 inline constexpr bool is_sequence_container_v =
     is_template_instant_of<std::deque, remove_cvref_t<T>>::value  ||
     is_template_instant_of<std::list, remove_cvref_t<T>>::value   ||
-    is_template_instant_of<std::vector, remove_cvref_t<T>>::value ||
-    is_template_instant_of<std::queue, remove_cvref_t<T>>::value;
+    is_template_instant_of<std::vector, remove_cvref_t<T>>::value;
 
 // Check is associative container
 template <typename T>
