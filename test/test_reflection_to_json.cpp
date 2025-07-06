@@ -8,6 +8,7 @@ struct BasicTypes {
     char m_char;
     const char* m_cstr = nullptr;
     std::string m_str;
+    bool m_bool;
 };
 
 struct SequenceContainers {
@@ -47,8 +48,10 @@ struct QueueTest {
 int main() {
     std::string output;
 
+    BasicTypes baseObj {123, 4.5f, 6.78, 'Z', "hello", "world", false};    
+
     NestedStruct obj {
-        {123, 4.5f, 6.78, 'Z', "hello", "world"},
+        {123, 4.5f, 6.78, 'Z', "hello", "world", true},
         {{1, 2, 3}, {"one", "two"}, {1.11, 2.22}, {'a', 'b'}},
         {{{"apple", 5}, {"banana", 10}}, {{"k1", "v1"}, {"k2", "v2"}}}
     };
@@ -56,12 +59,16 @@ int main() {
     DeepNest deep {
         obj,
         {
-            {999, 3.14f, 2.72, 'Y', "ptr", "deep"},
+            {999, 3.14f, 2.72, 'Y', "ptr", "deep", true},
             {{}, {}, {}, {}},
             {{}, {}}
         }
     };
+    std::cout << "--- BaseStruct ---" << std::endl;
+    tinyrefl::reflection_to_json(baseObj, output);
+    std::cout << output << "\n\n";
 
+    output.clear();
     std::cout << "--- NestedStruct ---" << std::endl;
     tinyrefl::reflection_to_json(obj, output);
     std::cout << output << "\n\n";

@@ -10,14 +10,15 @@ TinyReflection is a simple reflection library for Modern C++.
 - ✅ 支持结构体成员的自动 JSON 序列化（TODO：反序列化）
 - ✅ 支持以下成员类型：
   - `std::string`
-    - `int`
-    - `float`
-    - `double`
-    - `char`
-    - `char*` / `const char*`
-    - `嵌套struct`
-    - `std::vector`, `std::list`, `std::deque`
-    - `std::map<std::string, T>`、`std::unordered_map<std::string, T>` 
+  - `int`
+  - `bool`
+  - `float`
+  - `double`
+  - `char`
+  - `char*` / `const char*`
+  - `嵌套struct`
+  - `std::vector`, `std::list`, `std::deque`
+  - `std::map<std::string, T>`、`std::unordered_map<std::string, T>` 
 
 ## 📦 使用
 
@@ -55,7 +56,7 @@ int main() {
 
 - ❌ 支持的类型较少。
 - ❌ 只支持聚合类型，即能够支持大括号初始化的类型，当类型内含有：const成员、自定义构造、虚函数等元素时都会破坏类型的聚合特性。
-- 对于关联容器，只支持字符串类型作为容器的key值。
+- ❌ 对于关联容器，只支持字符串类型作为容器的key值。
 
 ## 🔭 TODO
 

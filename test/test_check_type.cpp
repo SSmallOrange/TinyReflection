@@ -18,6 +18,15 @@ int main()
 
     static_assert(!tinyrefl::is_custom_type_v<const char*>);
 
+    // Test Is Bool
+    static_assert(tinyrefl::is_bool_v<bool>);
+    static_assert(!tinyrefl::is_bool_v<int>);
+    static_assert(!tinyrefl::is_bool_v<int64_t>);
+    static_assert(!tinyrefl::is_bool_v<int&>);
+    static_assert(!tinyrefl::is_bool_v<int&&>);
+    static_assert(!tinyrefl::is_bool_v<double>);
+    static_assert(!tinyrefl::is_bool_v<char>);
+    
     // 测试 tinyrefl::is_string
     static_assert(tinyrefl::is_string_v<std::string>);
     static_assert(!tinyrefl::is_string_v<const char*>);

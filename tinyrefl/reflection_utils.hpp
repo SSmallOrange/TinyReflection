@@ -94,7 +94,8 @@ inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t
                                      !is_array_v<remove_cvref_t<T>> &&
                                      !is_int_v<remove_cvref_t<T>> &&
                                      !is_int64_v<remove_cvref_t<T>> &&
-                                     !is_float_v<remove_cvref_t<T>>;
+                                     !is_float_v<remove_cvref_t<T>> &&
+                                     !is_bool_v<remove_cvref_t<T>>;
 
 
 // get members name strings

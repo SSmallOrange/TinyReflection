@@ -20,6 +20,9 @@ template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_char_v<T>;
 
 template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object) requires is_bool_v<T>;
+
+template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>;
 
 template <OutputStream Stream, typename T>
@@ -88,6 +91,11 @@ inline void to_json_value(Stream&& s, T&& object) requires is_char_v<T> {
     s.append("\"");
     s.push_back(object);
     s.append("\"");
+}
+
+template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object) requires is_bool_v<T> {
+    s.append(object ? "true" : "false");
 }
 
 // char* to json
