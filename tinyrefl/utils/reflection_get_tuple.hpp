@@ -170,15 +170,7 @@ struct get_member_references_tuple<T, n> { 						\
 	}															\
 };															
 
-GET_MEMBER_TUPLE_HELPER(1, m1)
-GET_MEMBER_TUPLE_HELPER(2, m1, m2)
-GET_MEMBER_TUPLE_HELPER(3, m1, m2, m3)
-GET_MEMBER_TUPLE_HELPER(4, m1, m2, m3, m4)
-GET_MEMBER_TUPLE_HELPER(5, m1, m2, m3, m4, m5)
-GET_MEMBER_TUPLE_HELPER(6, m1, m2, m3, m4, m5, m6)
-GET_MEMBER_TUPLE_HELPER(7, m1, m2, m3, m4, m5, m6, m7)
-GET_MEMBER_TUPLE_HELPER(8, m1, m2, m3, m4, m5, m6, m7, m8)
-GET_MEMBER_TUPLE_HELPER(9, m1, m2, m3, m4, m5, m6, m7, m8, m9)
+#include "reflection_get_member_tuple_helper.hpp"
 
 template <AggregateType T>
 using member_array = std::array<std::string_view, members_count_v<remove_cvref_t<T>>>;

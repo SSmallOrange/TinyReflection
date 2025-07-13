@@ -85,6 +85,7 @@ inline constexpr bool is_float_v = std::is_floating_point_v<remove_cvref_t<T>>;
 template <typename T>
 inline constexpr bool is_double_v = std::is_same_v<double, remove_cvref_t<T>> && std::is_same_v<remove_cvref_t<T>, double>;
 
+// Other
 template <typename T>
 inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t<T>> &&
                                      !is_associative_container_v<remove_cvref_t<T>> &&
