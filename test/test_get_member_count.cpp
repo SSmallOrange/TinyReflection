@@ -1,4 +1,5 @@
 #include "tinyrefl/reflection.hpp"
+#include "tinyrefl/utils/reflection_get_tuple.hpp"
 
 int main() {
 	// test get members count

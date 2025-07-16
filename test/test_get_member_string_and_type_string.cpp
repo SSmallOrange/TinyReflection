@@ -3,7 +3,7 @@
 #include <array>
 int main() {
     	// test get members name
-	constexpr auto tp_name = tinyrefl::struct_members_to_tuple<Person>();
+	constexpr auto tp_name = tinyrefl::static_struct_members_to_tuple<Person>();
 	[&]<size_t... Is>(std::index_sequence<Is...> seq) {
 		((std::cout << tinyrefl::get_member_name<&std::get<Is>(tp_name)>() << "\n"), ...);
 	}(std::make_index_sequence<std::tuple_size_v<decltype(tp_name)>>{});
@@ -11,7 +11,7 @@ int main() {
 	std::cout << "\n\n\n";
 
 	// test get members type
-	constexpr auto tp_tuple = tinyrefl::struct_members_to_tuple<Person>();
+	constexpr auto tp_tuple = tinyrefl::static_struct_members_to_tuple<Person>();
 	[&]<size_t... Is>(std::index_sequence<Is...> seq) {
 		((std::cout << tinyrefl::get_member_type_name<std::remove_const_t<std::remove_reference_t<decltype(std::get<Is>(tp_tuple))>>>() << "\n"), ...);
 	}(std::make_index_sequence<std::tuple_size_v<decltype(tp_tuple)>>{});

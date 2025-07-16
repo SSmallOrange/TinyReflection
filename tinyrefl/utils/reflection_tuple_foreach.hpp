@@ -1,4 +1,4 @@
-#include "tinyrefl/utils/reflection_get_tuple.hpp"
+#include "utils/reflection_get_tuple.hpp"
 
 #include <format>
 
@@ -19,9 +19,9 @@ inline void for_each_member(T&& object, Function&& function) {
         return;
     }
 
-    if constexpr (std::is_invocable_v<Function, decltype(struct_member_reference<0>(object)), std::string_view, size_t>) {
+    if constexpr (std::is_invocable_v<Function, decltype(struct_member_reference_by_index<0>(object)), std::string_view, size_t>) {
         [&]<size_t... Is>(std::index_sequence<Is...>) {
-            (function(struct_member_reference<Is>(object), object_name_array[Is], Is), ...);
+            (function(struct_member_reference_by_index<Is>(object), object_name_array[Is], Is), ...);
         }(std::make_index_sequence<object_member_count>{});
     } else {
         static_assert(std::is_invocable_v<Function, std::string_view, size_t>, "invalid function args,  \

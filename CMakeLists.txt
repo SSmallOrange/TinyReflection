@@ -5,6 +5,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(TEST_PATH ${CMAKE_SOURCE_DIR}/test)
 
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/tinyrefl/thirdparty)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,6 +24,9 @@ add_executable(test_get_member_string_and_type_string
 
 add_executable(test_reflection_to_json 
      ${TEST_PATH}/test_reflection_to_json.cpp)
+
+add_executable(test_get_member_reference_map 
+     ${TEST_PATH}/test_get_member_reference_map.cpp)
 
 # add_executable(main 
 #      ${TEST_PATH}/main.cpp)
