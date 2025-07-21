@@ -9,13 +9,8 @@ using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 template <typename T>
 struct Wrapper {
-	inline static remove_cvref_t<T> _value;
+	inline static remove_cvref_t<T> value;
 };
-
-template <typename T>
-inline constexpr T& get_global_value() {
-	return Wrapper<remove_cvref_t<T>>::_value;
-}
 
 struct Any {
     constexpr Any(int) {}
@@ -161,7 +156,7 @@ struct get_member_references_tuple {
 template <AggregateType T>   									\
 struct get_member_references_tuple<T, n> { 						\
 	inline static constexpr auto get_tuple() {  	   			\
-		auto& [__VA_ARGS__] = get_global_value<T>();			\
+		auto& [__VA_ARGS__] = Wrapper<T>::value;			    \
 		return std::tie(__VA_ARGS__);							\
 	}   														\
 	inline static decltype(auto) get_reference_value(T&& t) {   \
@@ -208,4 +203,22 @@ inline decltype(auto) struct_member_reference(T&& t) {
 	static_assert(Index < count, "Index out of range");
 	return std::get<Index>(get_member_references_tuple<T, count>::get_reference_value(std::forward<T>(t)));
 }
+
+// get members offset array
+template <AggregateType T>
+inline constexpr const auto& struct_member_offset_array() {
+    using offset_v = std::size_t;
+    using member_offset_array_t = std::array<offset_v, members_count_v<T>>;
+
+    constexpr std::size_t members_count = members_count_v<T>;
+    constexpr auto members_tuple = struct_members_to_tuple<T>();
+    static member_offset_array_t offset_array = {[&]<size_t... Is>(std::index_sequence<Is...>) mutable -> member_offset_array_t {
+        member_offset_array_t arr;
+        ((arr[Is] = offset_v((uint8_t)&std::get<Is>(members_tuple) - (uint8_t)(&Wrapper<T>::value))), ...);
+        // ((arr[Is] = offset_v((uint8_t)&std::get<Is>(members_tuple) - (uint8_t)(&std::forward<T>(t)))), ...);
+        return arr;
+    }(std::make_index_sequence<members_count>{})};
+    return offset_array;
+} 
+
 }

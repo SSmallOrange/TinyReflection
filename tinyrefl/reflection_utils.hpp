@@ -119,4 +119,10 @@ inline consteval std::string_view get_member_type_name() {
 	return funcName.substr(start + 21, end - start - 22);
 }
 
+template <typename T>
+struct offset_of_member {
+    using type = T;
+    std::size_t value;
+};
+
 }
