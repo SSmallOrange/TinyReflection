@@ -1,6 +1,10 @@
 #pragma once
 
+#include <variant>
+
+#include "frozen/string.h"
 #include "reflection_utils.hpp"
+#include "frozen/unordered_map.h"
 
 namespace tinyrefl {  
 // utils
@@ -165,15 +169,7 @@ struct get_member_references_tuple<T, n> { 						\
 	}															\
 };															
 
-GET_MEMBER_TUPLE_HELPER(1, m1)
-GET_MEMBER_TUPLE_HELPER(2, m1, m2)
-GET_MEMBER_TUPLE_HELPER(3, m1, m2, m3)
-GET_MEMBER_TUPLE_HELPER(4, m1, m2, m3, m4)
-GET_MEMBER_TUPLE_HELPER(5, m1, m2, m3, m4, m5)
-GET_MEMBER_TUPLE_HELPER(6, m1, m2, m3, m4, m5, m6)
-GET_MEMBER_TUPLE_HELPER(7, m1, m2, m3, m4, m5, m6, m7)
-GET_MEMBER_TUPLE_HELPER(8, m1, m2, m3, m4, m5, m6, m7, m8)
-GET_MEMBER_TUPLE_HELPER(9, m1, m2, m3, m4, m5, m6, m7, m8, m9)
+#include "reflection_get_member_tuple_helper.hpp"
 
 template <AggregateType T>
 using member_array = std::array<std::string_view, members_count_v<remove_cvref_t<T>>>;
@@ -187,12 +183,12 @@ inline constexpr auto struct_members_to_tuple() {
 // get members array
 template <AggregateType T>
 inline consteval member_array<T> struct_members_to_array() {
-	using type = remove_cvref_t<T>;
-	constexpr auto tuple = struct_members_to_tuple<type>();
+	using U = remove_cvref_t<T>;
+	constexpr auto tuple = struct_members_to_tuple<U>();
 	return [&] <size_t... Is>(std::index_sequence<Is...>) {
         return member_array<T>{get_member_name<&std::get<Is>(tuple)>()...};
 		// return member_array{get_member_name_v<Is, tuple>()...};
-    }(std::make_index_sequence<members_count_v<type>>());
+    }(std::make_index_sequence<members_count_v<U>>());
 }
 
 // get members reference
@@ -219,6 +215,48 @@ inline constexpr const auto& struct_member_offset_array() {
         return arr;
     }(std::make_index_sequence<members_count>{})};
     return offset_array;
-} 
+}
+
+// get variant type
+template <typename T, typename Tuple, size_t... Is>
+inline auto get_variant_type() {
+    return std::variant<offset_of_member<
+        remove_cvref_t<std::tuple_element_t<Is, Tuple>>
+    >...>{};
+}
+
+template <size_t Is, typename Tuple>
+inline auto remove_tuple_cv_type() {
+    return remove_cvref_t<std::tuple_element_t<Is, Tuple>>{};
+}
+
+// get unordered_map of [ member_name, [member_type, member_offset] ]
+template <typename T, size_t... Is>
+inline auto get_variant_map(std::index_sequence<Is...>) {
+    using U = remove_cvref_t<T>;
+    constexpr auto member_name_arr = struct_members_to_array<U>();
+    auto& member_offset_arr = struct_member_offset_array<U>();
+    using Tuple = decltype(struct_members_to_tuple<U>());
+    // using Remove_Tuple_CV_Type = decltype(remove_cvref_t<std::tuple_element_t<Is, Tuple>>);
+    using ValueType = decltype(get_variant_type<U, Tuple, Is...>());
+    // runtime plan
+    // std::unordered_map<std::string_view, ValueType> map;
+    // (map.emplace(member_name_arr[Is],
+    //     ValueType{std::in_place_index<Is>, 
+    //         offset_of_member<decltype(remove_tuple_cv_type<Is, Tuple>())>{member_offset_arr[Is]}}),
+    // ...);
+    // return map;
+    return frozen::unordered_map<frozen::string, ValueType, sizeof...(Is)>{
+        {member_name_arr[Is],
+            ValueType{std::in_place_index<Is>, 
+                offset_of_member<decltype(remove_tuple_cv_type<Is, Tuple>())>{member_offset_arr[Is]}}
+        }...
+    };
+}
+
+template <typename T>
+inline auto struct_member_offset_map() {
+    return get_variant_map<T>(std::make_index_sequence<members_count_v<T>>{});
+}
 
 }
