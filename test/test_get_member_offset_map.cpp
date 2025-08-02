@@ -50,9 +50,5 @@ int main()
         // 此时value类型推导为float
         std::cout << std::format("type name: {}\n", typeid(value).name());
     }, var);
-
-    auto type = func<Person, std::tuple<std::string, int, int>>((std::make_index_sequence<tinyrefl::members_count_v<Person>>{}));
-
-    std::variant<tinyrefl::offset_of_member<std::string>, tinyrefl::offset_of_member<int>, tinyrefl::offset_of_member<int>>  hh{std::in_place_index<2>, tinyrefl::offset_of_member<int>{}};
     return 0;
 }
