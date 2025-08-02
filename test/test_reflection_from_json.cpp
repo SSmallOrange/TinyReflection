@@ -1,44 +1,91 @@
+#include "tinyrefl/rapidjson_SAX.hpp"
+#include "tinyrefl/reflection_to_json.hpp"
+#include "tinyrefl/reflection_from_json.hpp"
+
 #include "rapidjson/reader.h"
-#include <variant>
 #include <iostream>
 #include <vector>
-
-#include "tinyrefl/rapidjson_SAX.hpp"
+#include <string>
+#include <sstream>
 
 using namespace rapidjson;
 using namespace std;
 
-struct Address {
-    string m_street;
-    string m_city;
+struct Inner {
+    int id;
+    string label;
 };
 
-struct Person {
-    bool m_bool;
-    int m_int;
-    Address m_address;
+struct Config {
+    bool flag;
+    double ratio;
+    vector<int> values;
+    Inner inner;
+    vector<Inner> inner_list;
 };
+
+struct Complex {
+    string name;
+    Config config;
+    vector<vector<int>> matrix;
+    vector<vector<Inner>> inner_matrix;
+};
+
+struct Object_Vector {
+    int m_int;
+    Inner config;
+    vector<int> values;
+    vector<Inner> inner_list;
+    std::vector<int> vecInt;
+    std::vector<std::vector<int>> vecInner;
+};
+
+void test() {
+    Complex obj;
+
+    const char* json = R"(
+        {
+            "name": "TestComplex",
+            "config": {
+                "flag": true,
+                "ratio": 3.1415,
+                "values": [10, 20, 30],
+                "inner": {
+                "id": 42,
+                "label": "InnerLabel"
+                },
+                "inner_list": [
+                { "id": 1, "label": "A" },
+                { "id": 2, "label": "B" },
+                { "id": 3, "label": "C" }
+                ]
+            },
+            "matrix": [
+                [1, 2, 3],
+                [4, 5, 6]
+            ],
+            "inner_matrix": [
+                [
+                { "id": 101, "label": "X" },
+                { "id": 102, "label": "Y" }
+                ],
+                [
+                { "id": 201, "label": "Z" },
+                { "id": 202, "label": "W" }
+                ]
+            ]
+        }
+    )";
+
+    tinyrefl::reflection_from_json(obj, json);
+    std::cout << "Parse Success!\n" << std::endl;
+    std::string out;
+    tinyrefl::reflection_to_json(obj, out);
+    std::cout << "after:\n" << out << std::endl;
+}
 
 int main() {
-    const char json[] = " { \"m_bool\" : false, \"m_int\" : 1, \"m_address\" : { \"m_street\" : \"Street\", \"m_city\" : \"City\" }";
 
-    Person person;
-    person.m_bool = true;
-    person.m_int = 2;
-    std::cout << "before: " << (person.m_bool ? "true" : "false") << endl;
-    std::cout << "before: " << person.m_int << endl;
-    static auto member_offset_map = tinyrefl::struct_member_offset_map<Person>();
-    
-    // tinyrefl::ReaderHandler<Person> handle(member_offset_map, person);
-    tinyrefl::DispatchHandler handle;
-    handle.push_handler(member_offset_map, person);
-
-    Reader reader;
-    StringStream ss(json);
-    reader.Parse(ss, handle);
-    std::cout << "parse after: " << (person.m_bool ? "true" : "false") << endl;
-    std::cout << "parse after: " << person.m_int << endl;
-    std::cout << "parse after: " << person.m_address.m_street << endl;
-    std::cout << "parse after: " << person.m_address.m_city << endl;
+    test();
     return 0;
 }

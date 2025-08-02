@@ -98,6 +98,18 @@ inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t
                                      !is_bool_v<remove_cvref_t<T>>;
 
 
+template <typename T>
+struct sequence_element_type_impl;
+
+template <template <typename, typename...> class Container, typename T, typename... Args>
+struct sequence_element_type_impl<Container<T, Args...>> {
+    using type = T;
+};
+
+// Get Sequence Element Type
+template <typename T>
+using sequence_element_type_t = typename sequence_element_type_impl<T>::type;
+
 // get members name strings
 template <auto val>
 inline constexpr std::string_view get_member_name() {
