@@ -210,10 +210,12 @@ inline constexpr const auto& struct_member_offset_array() {
     constexpr auto members_tuple = struct_members_to_tuple<T>();
     static member_offset_array_t offset_array = {[&]<size_t... Is>(std::index_sequence<Is...>) mutable -> member_offset_array_t {
         member_offset_array_t arr;
-        ((arr[Is] = offset_v((uint8_t)&std::get<Is>(members_tuple) - (uint8_t)(&Wrapper<T>::value))), ...);
-        // ((arr[Is] = offset_v((uint8_t)&std::get<Is>(members_tuple) - (uint8_t)(&std::forward<T>(t)))), ...);
+        T dummy{};
+        auto tie = get_member_references_tuple<T, members_count>::get_reference_value(std::move(dummy));
+        ((arr[Is] = offset_v(reinterpret_cast<uint8_t*>(&std::get<Is>(tie)) - reinterpret_cast<uint8_t*>(&dummy))), ...);
         return arr;
     }(std::make_index_sequence<members_count>{})};
+
     return offset_array;
 }
 
