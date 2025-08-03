@@ -1,7 +1,5 @@
 #include "tinyrefl/reflection_get_tuple.hpp"
 
-#include <format>
-
 namespace tinyrefl {
 template<typename Stream>
 concept OutputStream = requires(Stream& s) {
