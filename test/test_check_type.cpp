@@ -73,7 +73,7 @@ int main()
 
     // 5. 测试平台相关类型
     static_assert(tinyrefl::is_int_v<size_t>, "size_t should be integral");
-    static_assert(tinyrefl::is_int_v<ptrdiff_t>, "ptrdiff_t should be integral");
+    static_assert(tinyrefl::is_int_v<std::ptrdiff_t>, "ptrdiff_t should be integral");
     static_assert(!tinyrefl::is_float_v<size_t>, "size_t should not be float");
 
     // 6. 测试cv限定和引用

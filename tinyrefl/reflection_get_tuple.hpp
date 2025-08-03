@@ -202,7 +202,7 @@ inline decltype(auto) struct_member_reference(T&& t) {
 
 // get members offset array
 template <AggregateType T>
-inline constexpr const auto& struct_member_offset_array() {
+inline const auto& struct_member_offset_array() {
     using offset_v = std::size_t;
     using member_offset_array_t = std::array<offset_v, members_count_v<T>>;
 
