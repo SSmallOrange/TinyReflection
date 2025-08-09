@@ -1,4 +1,4 @@
-#include "tinyrefl/reflection.hpp"
+#include "tinyrefl/utils/reflection.hpp"
 
 int main() {
 	// test get members count

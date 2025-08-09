@@ -1,4 +1,4 @@
-#include "tinyrefl/reflection_get_tuple.hpp"
+#include "reflection_get_tuple.hpp"
 
 namespace tinyrefl {
 template<typename Stream>

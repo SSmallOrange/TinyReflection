@@ -1,5 +1,5 @@
 #include "tinyrefl/reflection_to_json.hpp"
-#include "tinyrefl/reflection.hpp"
+#include "tinyrefl/utils/reflection.hpp"
 
 struct BasicTypes {
     int m_int;
