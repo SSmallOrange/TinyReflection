@@ -118,8 +118,6 @@ inline constexpr std::string_view get_member_name() {
     size_t begin = funcName.rfind("->") + 2;
     size_t end = funcName.rfind(">(");
     return funcName.substr(begin, end - begin);
-    std::string_view str;
-    str.substr();
 #else
     constexpr std::string_view funcName = __PRETTY_FUNCTION__; 
     constexpr size_t tmpBegin = funcName.find("val = (& ") + 9;
