@@ -2,6 +2,7 @@
 #include "utils/reflection_get_tuple.hpp"
 
 #include "rapidjson/reader.h"
+#include "rapidjson/error/en.h"
 
 namespace tinyrefl {
     // declear reader
@@ -343,13 +344,120 @@ namespace tinyrefl {
         DispatchHandler* _dispatch_handler = nullptr;
     };
     
+    enum class ErrorKind {
+        None = 0,
+        SyntaxError,          // General syntax error
+        Incomplete,           // JSON is not complete
+        InvalidEncoding,      // Invalid or unsupported encoding
+        ExtraDataAfterRoot,   // Extra data found after JSON root
+        NumberOutOfRange,     // Number too large or invalid format
+        StringEscapeInvalid,  // Invalid string escape sequence
+        TrailingComma,        // Trailing comma not allowed
+        CommentNotAllowed,    // Comments are not allowed
+        Unknown
+    };
+
+    struct Error {
+        ErrorKind kind = ErrorKind::None;
+        std::string message;
+        std::size_t offset = 0;
+        std::size_t line = 0;
+        std::size_t column = 0;
+    };
+
+    struct Status {
+        bool ok = true;
+        Error error;
+
+        operator bool() { return ok; }
+    };
+
+    static std::pair<std::size_t, std::size_t> offset_to_linecol(std::string_view s, std::size_t offset) {
+        std::size_t line = 1, col = 1;
+        const std::size_t n = std::min(offset, s.size());
+        for (std::size_t i = 0; i < n; ++i) {
+            if (s[i] == '\n') { ++line; col = 1; }
+            else { ++col; }
+        }
+        return {line, col};
+    }
+
+    static ErrorKind map_kind(rapidjson::ParseErrorCode code) {
+        using C = rapidjson::ParseErrorCode;
+        switch (code) {
+            case C::kParseErrorNone:                        
+                return ErrorKind::None;
+
+            case C::kParseErrorValueInvalid:
+            case C::kParseErrorObjectMissName:
+            case C::kParseErrorObjectMissColon:
+            case C::kParseErrorStringMissQuotationMark:
+            case C::kParseErrorStringUnicodeEscapeInvalidHex:
+            case C::kParseErrorStringUnicodeSurrogateInvalid:
+            case C::kParseErrorUnspecificSyntaxError:
+            case C::kParseErrorObjectMissCommaOrCurlyBracket:
+            case C::kParseErrorArrayMissCommaOrSquareBracket:
+                return ErrorKind::SyntaxError;
+
+            case C::kParseErrorNumberTooBig:
+            case C::kParseErrorNumberMissFraction:
+            case C::kParseErrorNumberMissExponent:
+                return ErrorKind::NumberOutOfRange;
+
+            case C::kParseErrorStringEscapeInvalid:
+                return ErrorKind::StringEscapeInvalid;
+
+            case C::kParseErrorDocumentRootNotSingular:
+                return ErrorKind::ExtraDataAfterRoot;
+
+            case C::kParseErrorDocumentEmpty:
+                return ErrorKind::Incomplete;
+
+            case C::kParseErrorStringInvalidEncoding:
+                return ErrorKind::InvalidEncoding;
+
+            default:
+                return ErrorKind::Unknown;
+        }
+    }
+
+    static std::string translate_message(ErrorKind k, rapidjson::ParseErrorCode code) {
+        switch (k) {
+            case ErrorKind::SyntaxError:         return "JSON syntax error";
+            case ErrorKind::Incomplete:          return "JSON is incomplete";
+            case ErrorKind::InvalidEncoding:     return "Invalid or unsupported encoding";
+            case ErrorKind::ExtraDataAfterRoot:  return "Extra data after root element";
+            case ErrorKind::NumberOutOfRange:    return "Number out of range or invalid format";
+            case ErrorKind::StringEscapeInvalid: return "Invalid string escape sequence";
+            case ErrorKind::TrailingComma:       return "Trailing comma not allowed";
+            case ErrorKind::CommentNotAllowed:   return "Comments are not allowed in JSON";
+            case ErrorKind::Unknown:             return std::string("Parse failed: ") + rapidjson::GetParseError_En(code);
+            case ErrorKind::None:                return "";
+        }
+        return "Parse failed";
+    }
+
     // Deserialization Interface
     template <AggregateType T>
-    inline void reflection_from_json(T&& object, const char* str) {
+    inline Status reflection_from_json(T&& object, const char* str) {
         DispatchHandler handler(object);
         rapidjson::StringStream ss(str);
         rapidjson::Reader reader;
-        reader.Parse(ss, handler);
+        auto result = reader.Parse<rapidjson::kParseDefaultFlags>(ss, handler);
+
+        Status st{};
+        st.ok = !result.IsError();
+
+        if (!st.ok) {
+            const auto code = result.Code();
+            const auto off  = result.Offset();
+
+            st.error.kind = map_kind(code);
+            st.error.offset = off;
+            std::tie(st.error.line, st.error.column) = offset_to_linecol(str, off);
+            st.error.message = translate_message(st.error.kind, code);
+        }
+        return st;
     }
 
 } // end tinyrefl namespace
