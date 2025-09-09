@@ -2,6 +2,12 @@
 
 namespace tinyrefl {
 
+template <detail::AggregateType T, detail::OutputStream Stream>
+inline void reflection_to_json(T&& object, Stream &stream);
+}
+
+namespace tinyrefl::detail {
+
 // declear
 template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_custom_type_v<T>;
@@ -28,8 +34,8 @@ template <OutputStream Stream, typename T>
 requires (is_int_v<T> || is_int64_v<T> || is_float_v<T> || is_double_v<T>)
 inline void to_json_value(Stream&& s, T&& object);
 
-template <AggregateType T, OutputStream Stream>
-inline void reflection_to_json(T&& object, Stream &stream);
+// template <AggregateType T, OutputStream Stream>
+// inline void reflection_to_json(T&& object, Stream &stream);
 
 // implement
 template <typename T>
@@ -48,7 +54,7 @@ inline void to_json_key(Stream&& s, Value&& value) {
 // to_json_value main template, recursion reslove custom type
 template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_custom_type_v<T> {
-    reflection_to_json(object, s);
+    ::tinyrefl::reflection_to_json(object, s);
 }
 // sequence to json
 template <OutputStream Stream, typename T>
@@ -64,7 +70,7 @@ inline void to_json_value(Stream&& s, T&& object) requires is_sequence_container
 template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_associative_container_v<T> {
     s.append("{");
-    for_each_by_iterator(s, object.cbegin(), object.cend(), ",", [&](const auto& pair_value) {  // std::pair
+    for_each_by_iterator(s, object.cbegin(), object.cend(), ",", [&](const auto& pair_value) {  // ::std::pair
         if constexpr (is_string_v<decltype(pair_value.first)>) {
             to_json_key(s, pair_value.first);
             s.append(":");
@@ -120,7 +126,7 @@ inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>
             default:
                 if (static_cast<unsigned char>(*str) < 0x20) {
                     char buffer[7];
-                    std::snprintf(buffer, sizeof(buffer), "\\u%04X", static_cast<unsigned char>(*str));
+                    ::std::snprintf(buffer, sizeof(buffer), "\\u%04X", static_cast<unsigned char>(*str));
                     s.append(buffer, 6);
                 } else {
                     s.append(str, 1);
@@ -136,24 +142,27 @@ inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>
 template <OutputStream Stream, typename T>
 requires (is_int_v<T> || is_int64_v<T> || is_float_v<T> || is_double_v<T>)
 inline void to_json_value(Stream&& s, T&& object) {
-    s.append(std::to_string(object));
+    s.append(::std::to_string(object));
 }
+    
+}  // end namespace tinyrefl::detail
 
-template <AggregateType T, OutputStream Stream>
+namespace tinyrefl {
+template <detail::AggregateType T, detail::OutputStream Stream>
 inline void reflection_to_json(T&& object, Stream &stream) {
-    constexpr size_t member_count = members_count_v<remove_cvref_t<T>>;
+    constexpr size_t member_count = detail::members_count_v<detail::remove_cvref_t<T>>;
 
     stream.append("{");
-    for_each_member(std::forward<T>(object), [&](auto&& member_reference, 
+    detail::for_each_member(::std::forward<T>(object), [&](auto&& member_reference, 
         auto&& member_name, auto&& member_index) {
-        to_json_key(stream, member_name);
+        detail::to_json_key(stream, member_name);
         stream.append(":");
-        to_json_value(stream, member_reference);
+        detail::to_json_value(stream, member_reference);
         if (member_index < member_count - 1) {
             stream.append(",");
         }
     });
     stream.append("}");
 }
-    
+
 }  // end namespace tinyrefl
