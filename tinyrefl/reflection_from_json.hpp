@@ -1,8 +1,8 @@
 #pragma once
 #include "utils/reflection_get_tuple.hpp"
 
-#include "rapidjson/reader.h"
-#include "rapidjson/error/en.h"
+#include "thirdparty/rapidjson/reader.h"
+#include "thirdparty/rapidjson/error/en.h"
 
 namespace tinyrefl {
     // declear reader
