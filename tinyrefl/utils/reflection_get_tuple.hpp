@@ -2,14 +2,11 @@
 
 #include <variant>
 
-#include "frozen/string.h"
+#include "thirdparty/frozen/string.h"
 #include "reflection_utils.hpp"
-#include "frozen/unordered_map.h"
+#include "thirdparty/frozen/unordered_map.h"
 
-namespace tinyrefl {  
-// utils
-template <typename T>
-using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+namespace tinyrefl {
 
 template <typename T>
 struct Wrapper {
