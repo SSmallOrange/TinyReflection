@@ -250,7 +250,7 @@ namespace tinyrefl::detail
                             reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
                         );
                         _dispatch_handler->push_handler<Value_Type>(member_offset_map, member_value);
-                    } }, offset);
+                } }, offset);
             }
             return true;
         }

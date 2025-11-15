@@ -64,7 +64,7 @@ inline constexpr bool is_char_array_v = ::std::is_array_v<remove_cvref_t<T>> && 
 
 // Check is bool
 template <typename T>
-inline constexpr bool is_bool_v = ::std::is_same_v<remove_cvref_t<T>, bool> && ::std::is_same_v<bool, remove_cvref_t<T>>;
+inline constexpr bool is_bool_v = ::std::is_same_v<remove_cvref_t<T>, bool>;
 
 // Check is int
 template <typename T>
@@ -76,15 +76,15 @@ inline constexpr bool is_int_v = ::std::is_integral_v<remove_cvref_t<T>> &&
 
 // Check is int64_t
 template <typename T>
-inline constexpr bool is_int64_v = ::std::is_same_v<remove_cvref_t<T>, int64_t> && ::std::is_same_v<uint64_t, remove_cvref_t<T>>;
+inline constexpr bool is_int64_v = ::std::is_same_v<remove_cvref_t<T>, int64_t> || ::std::is_same_v<remove_cvref_t<T>, std::uint64_t>;
 
 // Check is float
 template <typename T>
-inline constexpr bool is_float_v = ::std::is_floating_point_v<remove_cvref_t<T>>;
+inline constexpr bool is_float_v = ::std::is_same_v<remove_cvref_t<T>, float>;
 
 // Check is double
 template <typename T>
-inline constexpr bool is_double_v = ::std::is_same_v<double, remove_cvref_t<T>> && ::std::is_same_v<remove_cvref_t<T>, double>;
+inline constexpr bool is_double_v = ::std::is_same_v<double, remove_cvref_t<T>>;
 
 template <typename T>
 inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t<T>> &&
@@ -100,7 +100,9 @@ inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t
 
 
 template <typename T>
-struct sequence_element_type_impl;
+struct sequence_element_type_impl {
+    static_assert(false, "sequence_element_type just be use in sequence container type!");
+};
 
 template <template <typename, typename...> class Container, typename T, typename... Args>
 struct sequence_element_type_impl<Container<T, Args...>> {
