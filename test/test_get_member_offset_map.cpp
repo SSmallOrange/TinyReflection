@@ -4,13 +4,13 @@
 
 template <typename T, typename Tuple, size_t... Is>
 auto func(std::index_sequence<Is...>) {
-    using ValueType = decltype(tinyrefl::get_variant_type<T, Tuple, Is...>());
+    using ValueType = decltype(tinyrefl::detail::get_variant_type<T, Tuple, Is...>());
     return ValueType{};
 }
 
 int main()
 {
-    auto& arr = tinyrefl::struct_member_offset_array<Person>();
+    auto& arr = tinyrefl::detail::struct_member_offset_array<Person>();
 
     for (int i = 0; i < arr.size(); ++i) {
         std::cout << std::format("{}: {}\n", i, arr[i]);
@@ -20,17 +20,17 @@ int main()
     std::cout << std::format("size: {}\n", sizeof Person);
 
     
-    std::cout << std::format("size: {}\n", sizeof tinyrefl::Wrapper<Person>::value);
-    printf("address: %p\n", (char*)&tinyrefl::Wrapper<Person>::value);
+    std::cout << std::format("size: {}\n", sizeof tinyrefl::detail::Wrapper<Person>::value);
+    printf("address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value);
 
-    printf("m_name address: %p\n", (char*)&tinyrefl::Wrapper<Person>::value.m_name);
-    printf("m_age address: %p\n", (char*)&tinyrefl::Wrapper<Person>::value.m_age);
-    printf("m_male address: %p\n", (char*)&tinyrefl::Wrapper<Person>::value.m_male);
+    printf("m_name address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_name);
+    printf("m_age address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_age);
+    printf("m_male address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_male);
     
     printf("\n------------\n");
 
-    static auto member_offset_map = tinyrefl::struct_member_offset_map<Person>();
-    auto member_name_arr = tinyrefl::struct_members_to_array<Person>();
+    static auto member_offset_map = tinyrefl::detail::struct_member_offset_map<Person>();
+    auto member_name_arr = tinyrefl::detail::struct_members_to_array<Person>();
 
     for (int i = 0; i < member_offset_map.size(); ++i) {
         auto it = member_offset_map.find(member_name_arr[i]);
