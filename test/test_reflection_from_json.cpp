@@ -75,6 +75,8 @@ void test() {
         }
     )";
 
+    std::cout << "\n\n------ Test1 ------\n\n";
+
     if (tinyrefl::Status status = tinyrefl::reflection_from_json(obj, json); !status) {
         std:: cout << status.error.message << std::endl;
         std:: cout << status.error.line << std::endl;
@@ -82,15 +84,27 @@ void test() {
         std:: cout << status.error.offset << std::endl;
     } else {
         std::cout << "Parse Success!\n" << std::endl;
+
+        std::string out;
+        tinyrefl::reflection_to_json(obj, out);
+        std::cout << "after:\n" << out << std::endl;
     }
-    
-    std::string out;
-    tinyrefl::reflection_to_json(obj, out);
-    std::cout << "after:\n" << out << std::endl;
+
+    std::cout << "\n\n------ Test2 ------\n\n";
+
+    if (auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json); !ok) {
+        std::cout << "Parse Error!\n" << std::endl;
+    } else {
+        std::cout << "Parse Success!\n" << std::endl;
+        
+        std::string out;
+        tinyrefl::reflection_to_json(res, out);
+        std::cout << "after:\n" << out << std::endl;
+    }
 }
 
 int main() {
-
+    
     test();
     return 0;
 }

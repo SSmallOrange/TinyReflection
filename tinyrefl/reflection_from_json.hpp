@@ -552,4 +552,16 @@ namespace tinyrefl {
         return st;
     }
 
+    // Deserialization Interface
+    template <detail::AggregateType T>
+    inline std::pair<bool, ::std::remove_cvref_t<T>> reflection_from_json(const char *str) {
+        T value;
+        detail::DispatchHandler handler(value);
+        ::rapidjson::StringStream ss(str);
+        ::rapidjson::Reader reader;
+        auto result = reader.Parse<::rapidjson::kParseDefaultFlags>(ss, handler);
+
+        return {!result.IsError(), value};
+    }
+
 } // end tinyrefl namespace
