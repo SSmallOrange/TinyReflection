@@ -105,23 +105,25 @@ namespace tinyrefl::detail
             requires is_custom_type_v<T>
         void push_handler(const typename ReaderHandler<T>::MapType &map, T &value)
         {
-            auto *h = new ReaderHandler<T>(map, value);
-            h->set_dispatcher(this);
-            _stack.emplace_back(h);
+            static auto h = ReaderHandler<T>(map, value);
+            // auto *h = new ReaderHandler<T>(map, value);
+            h.set_dispatcher(this);
+            _stack.emplace_back(&h);
         }
 
         template <typename T>
             requires is_sequence_container_v<T>
         void push_handler(T &value)
         {
-            auto *h = new SequenceReaderHandler<T>(value);
-            h->set_dispatcher(this);
-            _stack.emplace_back(h);
+            static auto h = SequenceReaderHandler<T>(value);
+            // auto *h = new SequenceReaderHandler<T>(value);
+            h.set_dispatcher(this);
+            _stack.emplace_back(&h);
         }
 
         void pop_handler()
         {
-            delete _stack.back();
+            // delete _stack.back();
             _stack.pop_back();
         }
 
