@@ -52,39 +52,27 @@ int main()
     static_assert(!tinyrefl::detail::is_int64_v<void*>, "pointer should not match");
 
     // 3. 测试 tinyrefl::detail::is_float
-    static_assert(tinyrefl::detail::is_float_v<float>, "float should match");
-    static_assert(tinyrefl::detail::is_float_v<const float>, "const float should match");
-    static_assert(tinyrefl::detail::is_float_v<volatile float>, "volatile float should match");
+    static_assert(tinyrefl::detail::is_floating_v<float>, "float should match");
+    static_assert(tinyrefl::detail::is_floating_v<const float>, "const float should match");
+    static_assert(tinyrefl::detail::is_floating_v<volatile float>, "volatile float should match");
     // static_assert(!tinyrefl::detail::is_float<double>, "double should not match");
     // static_assert(!tinyrefl::detail::is_float<long double>, "long double should not match");
-    static_assert(!tinyrefl::detail::is_float_v<int>, "int should not match");
-    static_assert(tinyrefl::detail::is_float_v<float&>, "float reference should not match");
-    static_assert(!tinyrefl::detail::is_float_v<float*>, "float pointer should not match");
-
-    // 4. 测试 tinyrefl::detail::is_double
-    static_assert(tinyrefl::detail::is_double_v<double>, "double should match");
-    // static_assert(tinyrefl::detail::is_double<const double>, "const double should match");
-    // static_assert(tinyrefl::detail::is_double<volatile double>, "volatile double should match");
-    static_assert(!tinyrefl::detail::is_double_v<float>, "float should not match");
-    static_assert(!tinyrefl::detail::is_double_v<long double>, "long double should not match");
-    static_assert(!tinyrefl::detail::is_double_v<int>, "int should not match");
-    static_assert(tinyrefl::detail::is_double_v<double&>, "double reference should not match");
-    static_assert(!tinyrefl::detail::is_double_v<double*>, "double pointer should not match");
+    static_assert(!tinyrefl::detail::is_floating_v<int>, "int should not match");
+    static_assert(tinyrefl::detail::is_floating_v<float&>, "float reference should not match");
+    static_assert(!tinyrefl::detail::is_floating_v<float*>, "float pointer should not match");
 
     // 5. 测试平台相关类型
     static_assert(tinyrefl::detail::is_int_v<size_t>, "size_t should be integral");
     static_assert(tinyrefl::detail::is_int_v<std::ptrdiff_t>, "ptrdiff_t should be integral");
-    static_assert(!tinyrefl::detail::is_float_v<size_t>, "size_t should not be float");
+    static_assert(!tinyrefl::detail::is_floating_v<size_t>, "size_t should not be float");
 
     // 6. 测试cv限定和引用
     static_assert(tinyrefl::detail::is_int_v<const volatile int&>, "reference should not match");
-    static_assert(tinyrefl::detail::is_float_v<float&>, "float reference should not match");
-    static_assert(tinyrefl::detail::is_double_v<const double&&>, "double rvalue reference should not match");
+    static_assert(tinyrefl::detail::is_floating_v<float&>, "float reference should not match");
 
     struct Empty {};
     static_assert(!tinyrefl::detail::is_int_v<Empty>, "custom type should not match");
-    static_assert(!tinyrefl::detail::is_float_v<Empty>, "custom type should not match");
-    static_assert(!tinyrefl::detail::is_double_v<void()>, "function type should not match");
+    static_assert(!tinyrefl::detail::is_floating_v<Empty>, "custom type should not match");
     static_assert(!tinyrefl::detail::is_int64_v<int[10]>, "array should not match");
 
     return 0;

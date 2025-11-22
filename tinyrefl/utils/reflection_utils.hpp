@@ -76,15 +76,11 @@ inline constexpr bool is_int_v = ::std::is_integral_v<remove_cvref_t<T>> &&
 
 // Check is int64_t
 template <typename T>
-inline constexpr bool is_int64_v = ::std::is_same_v<remove_cvref_t<T>, int64_t> || ::std::is_same_v<remove_cvref_t<T>, std::uint64_t>;
+inline constexpr bool is_int64_v = ::std::is_same_v<remove_cvref_t<T>, int64_t> || ::std::is_same_v<uint64_t, remove_cvref_t<T>>;
 
 // Check is float
 template <typename T>
-inline constexpr bool is_float_v = ::std::is_same_v<remove_cvref_t<T>, float>;
-
-// Check is double
-template <typename T>
-inline constexpr bool is_double_v = ::std::is_same_v<double, remove_cvref_t<T>>;
+inline constexpr bool is_floating_v = ::std::is_floating_point_v<remove_cvref_t<T>>;
 
 template <typename T>
 inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t<T>> &&
@@ -95,7 +91,7 @@ inline constexpr bool is_custom_type_v = !is_sequence_container_v<remove_cvref_t
                                      !is_array_v<remove_cvref_t<T>> &&
                                      !is_int_v<remove_cvref_t<T>> &&
                                      !is_int64_v<remove_cvref_t<T>> &&
-                                     !is_float_v<remove_cvref_t<T>> &&
+                                     !is_floating_v<remove_cvref_t<T>> &&
                                      !is_bool_v<remove_cvref_t<T>>;
 
 

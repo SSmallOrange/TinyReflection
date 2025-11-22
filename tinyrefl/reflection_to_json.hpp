@@ -31,7 +31,7 @@ template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>;
 
 template <OutputStream Stream, typename T>
-requires (is_int_v<T> || is_int64_v<T> || is_float_v<T> || is_double_v<T>)
+requires (is_int_v<T> || is_int64_v<T> || is_floating_v<T>)
 inline void to_json_value(Stream&& s, T&& object);
 
 // template <AggregateType T, OutputStream Stream>
@@ -140,7 +140,7 @@ inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>
 
 // int to json
 template <OutputStream Stream, typename T>
-requires (is_int_v<T> || is_int64_v<T> || is_float_v<T> || is_double_v<T>)
+requires (is_int_v<T> || is_int64_v<T> || is_floating_v<T>)
 inline void to_json_value(Stream&& s, T&& object) {
     s.append(::std::to_string(object));
 }
