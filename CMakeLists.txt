@@ -32,5 +32,8 @@ add_executable(test_get_member_offset_map
 add_executable(test_reflection_from_json 
     ${TEST_PATH}/test_reflection_from_json.cpp)
 
+add_executable(test_pref_reflection 
+    ${TEST_PATH}/test_pref_reflection.cpp)
+
 # add_executable(main 
 #      ${TEST_PATH}/main.cpp)
