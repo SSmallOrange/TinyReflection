@@ -4,7 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cassert>
 #include <sstream>
+#include <functional>
 
 using namespace rapidjson;
 using namespace std;
@@ -27,15 +29,7 @@ struct Complex {
     Config config;
     vector<vector<int>> matrix;
     vector<vector<Inner>> inner_matrix;
-};
-
-struct Object_Vector {
-    int m_int;
-    Inner config;
-    vector<int> values;
-    vector<Inner> inner_list;
-    std::vector<int> vecInt;
-    std::vector<std::vector<int>> vecInner;
+    tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // 被忽略
 };
 
 void test() {
@@ -75,23 +69,6 @@ void test() {
         }
     )";
 
-    std::cout << "\n\n------ Test1 ------\n\n";
-
-    if (tinyrefl::Status status = tinyrefl::reflection_from_json(obj, json); !status) {
-        std:: cout << status.error.message << std::endl;
-        std:: cout << status.error.line << std::endl;
-        std:: cout << status.error.column << std::endl;
-        std:: cout << status.error.offset << std::endl;
-    } else {
-        std::cout << "Parse Success!\n" << std::endl;
-
-        std::string out;
-        tinyrefl::reflection_to_json(obj, out);
-        std::cout << "after:\n" << out << std::endl;
-    }
-
-    std::cout << "\n\n------ Test2 ------\n\n";
-
     if (auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json); !ok) {
         std::cout << "Parse Error!\n" << std::endl;
     } else {
@@ -100,6 +77,8 @@ void test() {
         std::string out;
         tinyrefl::reflection_to_json(res, out);
         std::cout << "after:\n" << out << std::endl;
+
+        assert(res.ptr.get() == nullptr);  // ptr 被忽略，保持默认值 nullptr
     }
 }
 

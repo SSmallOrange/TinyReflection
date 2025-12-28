@@ -15,8 +15,8 @@ namespace tinyrefl::detail
     requires is_sequence_container_v<T>
     struct SequenceReaderHandler;
 
-    template <typename T, size_t... Is>
-    struct ReaderHandlerImp;
+	template <typename T, typename IndexSeq>
+	struct ReaderHandlerImp;
 
     template <typename T>
     class SequenceReaderHandleImp;
@@ -30,23 +30,23 @@ namespace tinyrefl::detail
     template <typename T, typename IndexSeq>
     struct ReaderHandlerHelper;
 
-    template <typename T, size_t... Is>
-    struct ReaderHandlerHelper<T, ::std::index_sequence<Is...>>
-    {
-        using Type = ReaderHandlerImp<T, Is...>;
-    };
+	template <typename T, size_t... Is>
+	struct ReaderHandlerHelper<T, ::std::index_sequence<Is...>>
+	{
+		using Type = ReaderHandlerImp<T, ::std::index_sequence<Is...>>;
+	};
 
     template <typename T>
     using ReaderHandleImpType = ReaderHandlerHelper<
         remove_cvref_t<T>,
-        ::std::make_index_sequence<members_count_v<remove_cvref_t<T>>>>::Type;
+        serializable_indices_t<remove_cvref_t<T>>>::Type;
 
     template <typename T>
         requires is_custom_type_v<T>
     struct ReaderHandler : public ReaderHandleImpType<T>
     {
         using U = remove_cvref_t<T>;
-        using Base = typename ReaderHandlerHelper<U, ::std::make_index_sequence<members_count_v<U>>>::Type;
+        using Base = ReaderHandleImpType<U>;
 
         using MapType = typename Base::MapType;
 
@@ -175,11 +175,11 @@ namespace tinyrefl::detail
 
     // ::rapidjson::BaseReaderHandler<::rapidjson::UTF8<>, ReaderHandlerImp<T, Is...>>
     template <typename T, size_t... Is>
-    struct ReaderHandlerImp : public IHandler
+	struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler
     {
         using Tuple = decltype(struct_members_to_tuple<T>());
         using ValueType = decltype(get_variant_type<T, Tuple, Is...>());
-        using MapType = ::frozen::unordered_map<::frozen::string, ValueType, members_count_v<T>>;
+		using MapType = ::frozen::unordered_map<::frozen::string, ValueType, sizeof...(Is)>;
 
     public:
         ReaderHandlerImp(const MapType &map_value, T &value) : _struct_member_offset_map(map_value), _value(value) {}

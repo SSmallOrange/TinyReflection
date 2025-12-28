@@ -16,6 +16,7 @@ TinyReflection is a simple reflection library for Modern C++.
 - ✅ 基于 C++20 和 `结构化绑定` 的**零依赖**反射机制
 - ✅ 支持结构体成员的**自动 JSON 序列化和反序列化**
   - 支持嵌套的json数组格式
+  - 支持成员字段忽略处理
 - ✅ 支持跨平台编译（`MSVC 19+`、`GCC 11.3+`）
 - ✅ 支持以下成员类型：
   - `std::string`
@@ -58,6 +59,7 @@ struct Complex {
     Config config;
     vector<vector<int>> matrix;
     vector<vector<Inner>> inner_matrix;
+    tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // 被忽略
 };
 
 int main() {
@@ -99,6 +101,8 @@ int main() {
     std::string out;
     tinyrefl::reflection_to_json(obj, out);
     std::cout << "after:\n" << out << std::endl;
+
+    assert(obj.ptr.get() == nullptr);  // ptr 被忽略，保持默认值 nullptr
     return 0;
 }
 ```

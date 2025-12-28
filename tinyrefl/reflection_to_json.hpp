@@ -34,9 +34,6 @@ template <OutputStream Stream, typename T>
 requires (is_int_v<T> || is_int64_v<T> || is_floating_v<T>)
 inline void to_json_value(Stream&& s, T&& object);
 
-// template <AggregateType T, OutputStream Stream>
-// inline void reflection_to_json(T&& object, Stream &stream);
-
 // implement
 template <typename T>
 concept KeyValue = requires(const T& t) {
@@ -148,21 +145,21 @@ inline void to_json_value(Stream&& s, T&& object) {
 }  // end namespace tinyrefl::detail
 
 namespace tinyrefl {
-template <detail::AggregateType T, detail::OutputStream Stream>
-inline void reflection_to_json(T&& object, Stream &stream) {
-    constexpr size_t member_count = detail::members_count_v<detail::remove_cvref_t<T>>;
+    template <detail::AggregateType T, detail::OutputStream Stream>
+    inline void reflection_to_json(T&& object, Stream& stream) {
+	    constexpr size_t serializable_count = detail::serializable_members_count_v<detail::remove_cvref_t<T>>;
 
-    stream.append("{");
-    detail::for_each_member(::std::forward<T>(object), [&](auto&& member_reference, 
-        auto&& member_name, auto&& member_index) {
-        detail::to_json_key(stream, member_name);
-        stream.append(":");
-        detail::to_json_value(stream, member_reference);
-        if (member_index < member_count - 1) {
-            stream.append(",");
-        }
-    });
-    stream.append("}");
-}
+	    stream.append("{");
+	    detail::for_each_serializable_member(::std::forward<T>(object), [&](auto&& member_reference,
+		    auto&& member_name, auto&& member_index) {
+			    detail::to_json_key(stream, member_name);
+			    stream.append(":");
+			    detail::to_json_value(stream, member_reference);
+			    if (member_index < serializable_count - 1) {
+				    stream.append(",");
+			    }
+		    });
+	    stream.append("}");
+    }
 
 }  // end namespace tinyrefl
