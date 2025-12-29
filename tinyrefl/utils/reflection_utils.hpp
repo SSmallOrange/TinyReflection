@@ -107,12 +107,40 @@ namespace tinyrefl {
 		ignore& operator=(const ignore&) = default;
 		ignore& operator=(ignore&&) = default;
 
-		// 透明访问
+		ignore& operator=(const T& v) { value = v; return *this; }
+		ignore& operator=(T&& v) { value = std::move(v); return *this; }
+
+		ignore(std::nullptr_t) : value(nullptr) {}						// nullptr
+		bool operator!() const { return !static_cast<bool>(*this); }	// !
+		explicit operator bool() const {								// bool
+			if constexpr (requires { static_cast<bool>(value); }) {
+				return static_cast<bool>(value);
+			}
+			else {
+				return true;
+			}
+		}
+
+		// compare operators
+		bool operator==(const ignore& other) const { return value == other.value; }
+		bool operator!=(const ignore& other) const { return value != other.value; }
+		bool operator==(const T& other) const { return value == other; }
+		bool operator!=(const T& other) const { return value != other; }
+		bool operator==(std::nullptr_t) const {
+			if constexpr (requires { value == nullptr; }) {
+				return value == nullptr;
+			}
+			else {
+				return false;
+			}
+		}
+		bool operator!=(std::nullptr_t) const { return !(*this == nullptr); }
+
+
 		T& operator*()& { return value; }
 		const T& operator*() const& { return value; }
 		T&& operator*()&& { return ::std::move(value); }
 
-		// 对指针类型穿透引用
 		auto operator->() {
 			if constexpr (requires { value.operator->(); }) {
 				return value.operator->();
