@@ -23,8 +23,8 @@
 #ifndef FROZEN_LETITGO_BASIC_TYPES_H
 #define FROZEN_LETITGO_BASIC_TYPES_H
 
-#include "frozen/bits/exceptions.h"
-#include "frozen/bits/constexpr_assert.h"
+#include "exceptions.h"
+#include "constexpr_assert.h"
 
 #include <array>
 #include <utility>

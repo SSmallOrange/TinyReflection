@@ -23,12 +23,12 @@
 #ifndef FROZEN_LETITGO_UNORDERED_MAP_H
 #define FROZEN_LETITGO_UNORDERED_MAP_H
 
-#include "frozen/bits/basic_types.h"
-#include "frozen/bits/elsa.h"
-#include "frozen/bits/exceptions.h"
-#include "frozen/bits/pmh.h"
-#include "frozen/bits/version.h"
-#include "frozen/random.h"
+#include "bits/basic_types.h"
+#include "bits/elsa.h"
+#include "bits/exceptions.h"
+#include "bits/pmh.h"
+#include "bits/version.h"
+#include "random.h"
 
 #include <tuple>
 #include <functional>
