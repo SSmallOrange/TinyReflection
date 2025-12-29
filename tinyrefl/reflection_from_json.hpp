@@ -140,36 +140,69 @@ namespace tinyrefl::detail
         bool Double(double d) { return top()->Double(d); }
         bool RawNumber(const char *str, ::rapidjson::SizeType length, bool copy) { return top()->RawNumber(str, length, copy); }
         bool String(const char *str, ::rapidjson::SizeType length, bool copy) { return top()->String(str, length, copy); }
-        bool StartArray() { return top()->StartArray(); }
-        bool EndArray(::rapidjson::SizeType elementCount)
-        {
-            bool result = top()->EndArray(elementCount);
-            pop_handler();
-            return result;
-        }
-        bool StartObject()
-        {
-            if (_is_first_member)
-            {
-                _is_first_member = false;
-                return true;
-            }
-            return top()->StartObject();
-        }
-        bool EndObject(::rapidjson::SizeType m)
-        {
-            if (_stack.size() == 0)
-                return true; // End Reflection
-            bool result = top()->EndObject(m);
-            pop_handler();
-            return result;
-        }
+		bool StartArray()
+		{
+			bool result = top()->StartArray();
+			_array_depth.push_back(result);
+			return true;
+		}
+		bool EndArray(::rapidjson::SizeType elementCount)
+		{
+			if (_array_depth.empty()) {
+				return true;
+			}
+
+			bool should_pop = _array_depth.back();
+			_array_depth.pop_back();
+
+			if (_stack.empty()) {
+				return true;
+			}
+
+			bool result = top()->EndArray(elementCount);
+			if (should_pop) {
+				pop_handler();
+			}
+			return result;
+		}
+		bool StartObject()
+		{
+			if (_is_first_member) {
+				_is_first_member = false;
+				_nested_depth.push_back(true);
+				return true;
+			}
+			bool result = top()->StartObject();
+			_nested_depth.push_back(result);
+			return true;
+		}
+
+		bool EndObject(::rapidjson::SizeType m)
+		{
+			if (_nested_depth.empty())
+				return true;
+
+			bool should_pop = _nested_depth.back();
+			_nested_depth.pop_back();
+
+			if (_stack.empty())
+				return true;
+
+			bool result = top()->EndObject(m);
+			if (should_pop) {
+				pop_handler();
+			}
+			return result;
+		}
 
     private:
         IHandler *top() const { return _stack.back(); }
 
     private:
         ::std::vector<IHandler *> _stack;
+		::std::vector<bool> _nested_depth;
+		::std::vector<bool> _array_depth;
+
         bool _is_first_member = true;
     };
 
@@ -179,10 +212,13 @@ namespace tinyrefl::detail
     {
         using Tuple = decltype(struct_members_to_tuple<T>());
         using ValueType = decltype(get_variant_type<T, Tuple, Is...>());
-		using MapType = ::frozen::unordered_map<::frozen::string, ValueType, sizeof...(Is)>;
+        using MapType = ::std::unordered_map<::std::string, ValueType>;
 
     public:
-        ReaderHandlerImp(const MapType &map_value, T &value) : _struct_member_offset_map(map_value), _value(value) {}
+		ReaderHandlerImp(const MapType& map_value, T& value)
+			: _struct_member_offset_map(map_value)
+			, _iterator(_struct_member_offset_map.end())
+			, _value(value) {}
 
     public:
         bool Null()
@@ -240,11 +276,12 @@ namespace tinyrefl::detail
         }
         bool StartObject() override
         {
-            if (_iterator != _struct_member_offset_map.end())
+            bool found = (_iterator != _struct_member_offset_map.end());
+            if (found)
             {
                 auto offset = _iterator->second;
-                ::std::visit([&](auto arg)
-                             {
+                bool pushed = false;
+                ::std::visit([&](auto arg) {
                     using Value_Type = typename decltype(arg)::type;
                     if constexpr (is_custom_type_v<Value_Type>) {
                         static auto member_offset_map = struct_member_offset_map<Value_Type>();
@@ -252,33 +289,39 @@ namespace tinyrefl::detail
                             reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
                         );
                         _dispatch_handler->push_handler<Value_Type>(member_offset_map, member_value);
+                        pushed = true;
                 } }, offset);
+                return pushed;
             }
-            return true;
+            return false;
         }
         bool Key(const char *str, ::rapidjson::SizeType length, bool copy) override
         {
-            _iterator = _struct_member_offset_map.find(::frozen::string(str, length));
-            return true;
+			_iterator = _struct_member_offset_map.find(::std::string(str, length));
+			bool found = (_iterator != _struct_member_offset_map.end());
+			return true;
         }
         bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
-        bool StartArray() override
-        {
-            if (_iterator != _struct_member_offset_map.end())
-            {
-                auto offset = _iterator->second;
-                ::std::visit([&](auto arg)
-                             {
-                    using Value_Type = typename decltype(arg)::type;
-                    if constexpr (is_sequence_container_v<Value_Type>) {
-                        Value_Type& member_value = *reinterpret_cast<Value_Type*>(
-                            reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
-                        );
-                        _dispatch_handler->push_handler<Value_Type>(member_value);
-                    } }, offset);
-            }
-            return true;
-        }
+		bool StartArray() override
+		{
+			bool found = (_iterator != _struct_member_offset_map.end());
+			if (found)
+			{
+				auto offset = _iterator->second;
+				bool pushed = false;
+				::std::visit([&](auto arg) {
+					using Value_Type = typename decltype(arg)::type;
+					if constexpr (is_sequence_container_v<Value_Type>) {
+						Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+							reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
+							);
+						_dispatch_handler->push_handler<Value_Type>(member_value);
+						pushed = true;
+				} }, offset);
+				return pushed;
+			}
+			return false;
+		}
         bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
 
     private:
@@ -307,7 +350,7 @@ namespace tinyrefl::detail
 
     private:
         const MapType &_struct_member_offset_map;
-        MapType::const_iterator _iterator = nullptr;
+        typename MapType::const_iterator _iterator;
         T &_value;
         DispatchHandler *_dispatch_handler = nullptr;
     };
@@ -373,12 +416,13 @@ namespace tinyrefl::detail
         }
         bool StartObject() override
         {
-            if constexpr (is_custom_type_v<ElementType>)
-            {
-                static auto member_offset_map = struct_member_offset_map<ElementType>();
-                _dispatch_handler->push_handler<ElementType>(member_offset_map, _value.emplace_back());
-            }
-            return true;
+			if constexpr (is_custom_type_v<ElementType>)
+			{
+				const auto& member_offset_map = struct_member_offset_map<ElementType>();
+				_dispatch_handler->push_handler<ElementType>(member_offset_map, _value.emplace_back());
+				return true;
+			}
+			return false;
         }
         bool Key(const char *str, ::rapidjson::SizeType length, bool copy) override
         {
@@ -387,11 +431,12 @@ namespace tinyrefl::detail
         bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
         bool StartArray() override
         {
-            if constexpr (is_sequence_container_v<ElementType>)
-            {
-                _dispatch_handler->push_handler<ElementType>(_value.emplace_back());
-            }
-            return true;
+			if constexpr (is_sequence_container_v<ElementType>)
+			{
+				_dispatch_handler->push_handler<ElementType>(_value.emplace_back());
+				return true;
+			}
+			return false;
         }
         bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
 

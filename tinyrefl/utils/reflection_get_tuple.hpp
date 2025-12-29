@@ -310,12 +310,14 @@ struct get_member_references_tuple<T, n> { 						\
 		using Tuple = decltype(struct_members_to_tuple<U>());
 		using ValueType = decltype(get_variant_type<U, Tuple, Is...>());
 
-		return frozen::unordered_map<frozen::string, ValueType, sizeof...(Is)>{
-			{member_name_arr[Is],
-				ValueType{ ::std::in_place_index<index_in_pack<Is, Is...>()>,
-					offset_of_member<decltype(remove_tuple_cv_type<Is, Tuple>())>{member_offset_arr[Is]} }
-			}...
-		};
+		std::unordered_map<std::string, ValueType> result;
+		((result.emplace(
+			std::string(member_name_arr[Is]),
+			ValueType{ ::std::in_place_index<index_in_pack<Is, Is...>()>,
+				offset_of_member<decltype(remove_tuple_cv_type<Is, Tuple>())>{member_offset_arr[Is]} }
+		)), ...);
+
+		return result;
 	}
 
 	// get struct member offset map
