@@ -93,7 +93,7 @@ namespace tinyrefl::detail {
 } // end namespace tinyrefl::detail
 
 namespace tinyrefl {
-	// ±Íº«∫ˆ¬‘≥…‘±
+	// Ê†áËÆ∞ÂøΩÁï•ÊàêÂëò
 	template <typename T>
 	struct ignore {
 		T value{};
@@ -159,11 +159,11 @@ namespace tinyrefl {
 			}
 		}
 
-		// “˛ Ω◊™ªª
+		// ÈöêÂºèËΩ¨Êç¢
 		operator T& ()& { return value; }
 		operator const T& () const& { return value; }
 
-		// ªÒ»°ƒ⁄≤ø÷µ
+		// Ëé∑ÂèñÂÜÖÈÉ®ÂÄº
 		T& get()& { return value; }
 		const T& get() const& { return value; }
 		T&& get()&& { return ::std::move(value); }
@@ -220,7 +220,28 @@ namespace tinyrefl::detail {
 		size_t begin = funcName.rfind("->") + 2;
 		size_t end = funcName.rfind(">(");
 		return funcName.substr(begin, end - begin);
-#else
+#elif defined(__clang__)
+		constexpr ::std::string_view funcName = __PRETTY_FUNCTION__;
+		constexpr size_t val_pos = funcName.find("val = ");
+		constexpr size_t end = funcName.rfind(']');
+		constexpr ::std::string_view content = funcName.substr(val_pos + 6, end - (val_pos + 6));
+		// member name is after the last '.' or '::'
+		constexpr size_t dot = content.rfind('.');
+		constexpr size_t colon = content.rfind("::");
+		if constexpr (dot != ::std::string_view::npos) {
+			constexpr auto name = content.substr(dot + 1);
+			if constexpr (name.ends_with(");")) return name.substr(0, name.size() - 2);
+			else if constexpr (name.ends_with(")")) return name.substr(0, name.size() - 1);
+			else return name;
+		} else if constexpr (colon != ::std::string_view::npos) {
+			constexpr auto name = content.substr(colon + 2);
+			if constexpr (name.ends_with(");")) return name.substr(0, name.size() - 2);
+			else if constexpr (name.ends_with(")")) return name.substr(0, name.size() - 1);
+			else return name;
+		} else {
+			return content;
+		}
+#elif defined(__GNUC__)
 		constexpr ::std::string_view funcName = __PRETTY_FUNCTION__;
 		constexpr size_t tmpBegin = funcName.find("val = (& ") + 9;
 		constexpr size_t tmpEnd = funcName.rfind(");");
