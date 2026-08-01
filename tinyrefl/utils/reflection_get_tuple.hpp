@@ -1,10 +1,10 @@
 #pragma once
 
 #include <variant>
+#include <unordered_map>
+#include <string>
 
-#include "tinyrefl/thirdparty/frozen/string.h"
 #include "reflection_utils.hpp"
-#include "tinyrefl/thirdparty/frozen/unordered_map.h"
 
 namespace tinyrefl::detail {
 
@@ -224,7 +224,7 @@ struct get_member_references_tuple<T, n> { 						\
 		return offset_array;
 	}
 
-	// ¼ì²é member<I> ÊÇ·ñÖ§³Ö·´Éä
+	// æ£€æŸ¥ member<I> æ˜¯å¦æ”¯æŒåå°„
 	template <typename T, ::std::size_t I>
 	consteval bool is_member_serializable() {
 		using Tuple = decltype(struct_members_to_tuple<T>());
@@ -232,7 +232,7 @@ struct get_member_references_tuple<T, n> { 						\
 		return is_serializable_v<MemberType>;
 	}
 
-	// Ö§³Ö·´ÉäµÄ³ÉÔ±ÊıÁ¿
+	// æ”¯æŒåå°„çš„æˆå‘˜æ•°é‡
 	template <typename T, ::std::size_t... Is>
 	consteval ::std::size_t count_serializable_impl(::std::index_sequence<Is...>) {
 		return ((is_member_serializable<T, Is>() ? 1 : 0) + ...);
@@ -242,7 +242,7 @@ struct get_member_references_tuple<T, n> { 						\
 	inline constexpr ::std::size_t serializable_members_count_v =
 		count_serializable_impl<remove_cvref_t<T>>(::std::make_index_sequence<members_count_v<remove_cvref_t<T>>>{});
 	
-	// ¹¹½¨Ö§³Ö·´Éä³ÉÔ±µÄË÷ÒıĞòÁĞ
+	// æ„å»ºæ”¯æŒåå°„æˆå‘˜çš„ç´¢å¼•åºåˆ—
 	template <typename Seq, ::std::size_t V>
 	struct index_sequence_push_back;
 

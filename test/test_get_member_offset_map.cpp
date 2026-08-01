@@ -16,8 +16,8 @@ int main()
         std::cout << std::format("{}: {}\n", i, arr[i]);
     }
 
-    std::cout << std::format("size: {}\n", sizeof std::string);
-    std::cout << std::format("size: {}\n", sizeof Person);
+    std::cout << std::format("size: {}\n", sizeof(std::string));
+    std::cout << std::format("size: {}\n", sizeof(Person));
 
     
     std::cout << std::format("size: {}\n", sizeof tinyrefl::detail::Wrapper<Person>::value);
@@ -33,7 +33,7 @@ int main()
     auto member_name_arr = tinyrefl::detail::struct_members_to_array<Person>();
 
     for (int i = 0; i < member_offset_map.size(); ++i) {
-        auto it = member_offset_map.find(member_name_arr[i]);
+        auto it = member_offset_map.find(std::string(member_name_arr[i]));
         std::cout << std::format("{}: {}\n", i, member_name_arr[i]);
         if (it != member_offset_map.end()) {
             auto offset = it->second;
