@@ -7,11 +7,16 @@ set(TEST_PATH ${CMAKE_SOURCE_DIR}/test)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/tinyrefl)
 include_directories(${CMAKE_SOURCE_DIR}/tinyrefl/thirdparty)
+include_directories(${TEST_PATH})
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# 启用 CTest
+enable_testing()
+
+# 测试目标
 add_executable(test_check_type 
     ${TEST_PATH}/test_check_type.cpp)
 
@@ -36,5 +41,13 @@ add_executable(test_reflection_from_json
 add_executable(test_pref_reflection 
     ${TEST_PATH}/test_pref_reflection.cpp)
 
-# add_executable(main 
-#      ${TEST_PATH}/main.cpp)
+# 注册测试到 CTest
+add_test(NAME test_check_type COMMAND test_check_type)
+add_test(NAME test_get_member_count COMMAND test_get_member_count)
+add_test(NAME test_get_member_value COMMAND test_get_member_value)
+add_test(NAME test_get_member_string_and_type_string COMMAND test_get_member_string_and_type_string)
+add_test(NAME test_reflection_to_json COMMAND test_reflection_to_json)
+add_test(NAME test_get_member_offset_map COMMAND test_get_member_offset_map)
+add_test(NAME test_reflection_from_json COMMAND test_reflection_from_json)
+# 性能测试
+# add_test(NAME test_pref_reflection COMMAND test_pref_reflection)

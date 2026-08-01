@@ -1,14 +1,11 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 #include "tinyrefl/reflection_to_json.hpp"
 #include "tinyrefl/reflection_from_json.hpp"
 
-#include <iostream>
 #include <vector>
 #include <string>
-#include <cassert>
-#include <sstream>
-#include <functional>
 
-using namespace rapidjson;
 using namespace std;
 
 struct Inner {
@@ -29,12 +26,10 @@ struct Complex {
     Config config;
     vector<vector<int>> matrix;
     vector<vector<Inner>> inner_matrix;
-    tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // ±»ºöÂÔ
+    tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // è¢«å¿½ç•¥çš„å­—æ®µ
 };
 
-void test() {
-    Complex obj;
-
+TEST_CASE("reflection_from_json - parse succeeds") {
     const char* json = R"(
         {
             "name": "TestComplex",
@@ -43,13 +38,13 @@ void test() {
                 "ratio": 3.1415,
                 "values": [10, 20, 30],
                 "inner": {
-                "id": 42,
-                "label": "InnerLabel"
+                    "id": 42,
+                    "label": "InnerLabel"
                 },
                 "inner_list": [
-                { "id": 1, "label": "A" },
-                { "id": 2, "label": "B" },
-                { "id": 3, "label": "C" }
+                    { "id": 1, "label": "A" },
+                    { "id": 2, "label": "B" },
+                    { "id": 3, "label": "C" }
                 ]
             },
             "matrix": [
@@ -58,32 +53,52 @@ void test() {
             ],
             "inner_matrix": [
                 [
-                { "id": 101, "label": "X" },
-                { "id": 102, "label": "Y" }
+                    { "id": 101, "label": "X" },
+                    { "id": 102, "label": "Y" }
                 ],
                 [
-                { "id": 201, "label": "Z" },
-                { "id": 202, "label": "W" }
+                    { "id": 201, "label": "Z" },
+                    { "id": 202, "label": "W" }
                 ]
             ]
         }
     )";
 
-    if (auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json); !ok) {
-        std::cout << "Parse Error!\n" << std::endl;
-    } else {
-        std::cout << "Parse Success!\n" << std::endl;
-        
-        std::string out;
-        tinyrefl::reflection_to_json(res, out);
-        std::cout << "after:\n" << out << std::endl;
+    auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
 
-        assert(res.ptr.get() == nullptr);  // ptr ±»ºöÂÔ£¬±£³ÖÄ¬ÈÏÖµ nullptr
-    }
+    // è§£æåº”å½“è¿”å›æˆåŠŸ
+    CHECK(ok == true);
+
+    // ignore å­—æ®µåº”ä¿æŒé»˜è®¤å€¼ nullptr
+    CHECK(res.ptr.get() == nullptr);
 }
 
-int main() {
-    
-    test();
-    return 0;
+TEST_CASE("reflection_from_json - roundtrip to_json does not crash") {
+    const char* json = R"(
+        {
+            "name": "TestComplex",
+            "config": {
+                "flag": true,
+                "ratio": 3.1415,
+                "values": [10, 20, 30],
+                "inner": {
+                    "id": 42,
+                    "label": "InnerLabel"
+                },
+                "inner_list": [
+                    { "id": 1, "label": "A" }
+                ]
+            },
+            "matrix": [[1, 2, 3]],
+            "inner_matrix": [[{ "id": 101, "label": "X" }]]
+        }
+    )";
+
+    auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
+    CHECK(ok == true);
+
+    // åºåˆ—åŒ–å› JSON åº”ä¸å´©æºƒ
+    std::string output;
+    tinyrefl::reflection_to_json(res, output);
+    CHECK(!output.empty());
 }

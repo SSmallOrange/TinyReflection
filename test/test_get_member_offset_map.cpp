@@ -1,54 +1,40 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 #include "tinyrefl/utils/reflection.hpp"
 
 #include <format>
+#include <string>
 
-template <typename T, typename Tuple, size_t... Is>
-auto func(std::index_sequence<Is...>) {
-    using ValueType = decltype(tinyrefl::detail::get_variant_type<T, Tuple, Is...>());
-    return ValueType{};
-}
-
-int main()
-{
+TEST_CASE("struct_member_offset_array - basic functionality") {
     auto& arr = tinyrefl::detail::struct_member_offset_array<Person>();
 
-    for (int i = 0; i < arr.size(); ++i) {
-        std::cout << std::format("{}: {}\n", i, arr[i]);
+    // Person 有 3 个成员，offset 数组大小应为 3
+    CHECK(arr.size() == 3);
+
+    // 第一个成员的 offset 应该 >= 0
+    CHECK(arr[0] >= 0);
+
+    // offset 应该是递增的（成员按顺序排列）
+    for (size_t i = 1; i < arr.size(); ++i) {
+        CHECK(arr[i] > arr[i - 1]);
     }
+}
 
-    std::cout << std::format("size: {}\n", sizeof(std::string));
-    std::cout << std::format("size: {}\n", sizeof(Person));
-
-    
-    std::cout << std::format("size: {}\n", sizeof tinyrefl::detail::Wrapper<Person>::value);
-    printf("address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value);
-
-    printf("m_name address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_name);
-    printf("m_age address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_age);
-    printf("m_male address: %p\n", (char*)&tinyrefl::detail::Wrapper<Person>::value.m_male);
-    
-    printf("\n------------\n");
-
+TEST_CASE("struct_member_offset_map - basic functionality") {
     static auto member_offset_map = tinyrefl::detail::struct_member_offset_map<Person>();
     auto member_name_arr = tinyrefl::detail::struct_members_to_array<Person>();
 
-    for (int i = 0; i < member_offset_map.size(); ++i) {
-        auto it = member_offset_map.find(std::string(member_name_arr[i]));
-        std::cout << std::format("{}: {}\n", i, member_name_arr[i]);
-        if (it != member_offset_map.end()) {
-            auto offset = it->second;
-            std::visit([&](auto&& arg) {
-                // 将it->first转为std::string输出，按照string_view输出会出现输出与key不一致的情况
-                // 但是frozen::string不支持转换string, 正常string_view可以
-                printf("%s offset: %d\n", std::string(it->first.data()).c_str(), arg.value);
-            }, offset);
-        }
-    }
+    // map 大小应等于成员数
+    CHECK(member_offset_map.size() == 3);
 
-    std::variant<int, float, double> var{std::in_place_index<1>, 0.5};
-    std::visit([&](auto&& value) {
-        // 此时value类型推导为float
-        std::cout << std::format("type name: {}\n", typeid(value).name());
-    }, var);
-    return 0;
+    // 每个成员名都应该在 map 中找到
+    for (size_t i = 0; i < member_name_arr.size(); ++i) {
+        auto it = member_offset_map.find(std::string(member_name_arr[i]));
+        CHECK(it != member_offset_map.end());
+    }
+}
+
+TEST_CASE("Wrapper - value size consistency") {
+    // Wrapper 中的 value 大小应等于 Person 的大小
+    CHECK(sizeof(tinyrefl::detail::Wrapper<Person>::value) == sizeof(Person));
 }
