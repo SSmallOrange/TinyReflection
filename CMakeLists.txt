@@ -38,6 +38,9 @@ add_executable(test_get_member_offset_map
 add_executable(test_reflection_from_json 
     ${TEST_PATH}/test_reflection_from_json.cpp)
 
+add_executable(test_json_serialization_bugs
+    ${TEST_PATH}/test_json_serialization_bugs.cpp)
+
 add_executable(test_pref_reflection 
     ${TEST_PATH}/test_pref_reflection.cpp)
 
@@ -49,5 +52,6 @@ add_test(NAME test_get_member_string_and_type_string COMMAND test_get_member_str
 add_test(NAME test_reflection_to_json COMMAND test_reflection_to_json)
 add_test(NAME test_get_member_offset_map COMMAND test_get_member_offset_map)
 add_test(NAME test_reflection_from_json COMMAND test_reflection_from_json)
+add_test(NAME test_json_serialization_bugs COMMAND test_json_serialization_bugs)
 # 性能测试
 # add_test(NAME test_pref_reflection COMMAND test_pref_reflection)

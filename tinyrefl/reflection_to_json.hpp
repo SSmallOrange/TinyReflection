@@ -1,4 +1,5 @@
 #include "utils/reflection_tuple_foreach.hpp"
+#include <charconv>
 
 namespace tinyrefl {
 
@@ -82,9 +83,29 @@ inline void to_json_value(Stream&& s, T&& object) requires is_associative_contai
 // string to json
 template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object) requires is_string_v<T> {
-    s.append("\"");
-    s.append(object.data(), object.size());
-    s.append("\"");
+    s.append("\"", 1);
+    for (::std::size_t i = 0; i < object.size(); ++i) {
+        const char ch = object[i];
+        switch (ch) {
+            case '"':  s.append("\\\"", 2); break;
+            case '\\': s.append("\\\\", 2); break;
+            case '\b': s.append("\\b", 2);  break;
+            case '\f': s.append("\\f", 2);  break;
+            case '\n': s.append("\\n", 2);  break;
+            case '\r': s.append("\\r", 2);  break;
+            case '\t': s.append("\\t", 2);  break;
+            default:
+                if (static_cast<unsigned char>(ch) < 0x20) {
+                    char buffer[7];
+                    ::std::snprintf(buffer, sizeof(buffer), "\\u%04X", static_cast<unsigned char>(ch));
+                    s.append(buffer, 6);
+                } else {
+                    s.append(&ch, 1);
+                }
+                break;
+        }
+    }
+    s.append("\"", 1);
 }
 
 // char to json
@@ -135,11 +156,17 @@ inline void to_json_value(Stream&& s, T&& object) requires is_char_pointer_v<T>
     s.append("\"", 1);
 }
 
-// int to json
+// number to json
 template <OutputStream Stream, typename T>
 requires (is_int_v<T> || is_int64_v<T> || is_floating_v<T>)
 inline void to_json_value(Stream&& s, T&& object) {
-    s.append(::std::to_string(object));
+    if constexpr (is_floating_v<T>) {
+        char buffer[32];
+        auto [ptr, ec] = ::std::to_chars(buffer, buffer + sizeof(buffer), object);
+        s.append(buffer, static_cast<::std::size_t>(ptr - buffer));
+    } else {
+        s.append(::std::to_string(object));
+    }
 }
     
 }  // end namespace tinyrefl::detail
