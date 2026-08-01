@@ -79,7 +79,14 @@ namespace tinyrefl::detail
         virtual bool EndArray(::rapidjson::SizeType) = 0;
 
         virtual void set_dispatcher(DispatchHandler *dispatcher) = 0;
-        virtual ~IHandler() = default;
+
+        // Optional lifecycle hooks for testing/debugging.
+        // Set these before parsing to count ctor/dtor calls; leave null in production.
+        inline static void (*on_construct)() = nullptr;
+        inline static void (*on_destruct)()  = nullptr;
+
+        IHandler()          { if (on_construct) on_construct(); }
+        virtual ~IHandler() { if (on_destruct)  on_destruct();  }
     };
 
     class DispatchHandler : public ::rapidjson::BaseReaderHandler<::rapidjson::UTF8<>, DispatchHandler>
@@ -121,7 +128,7 @@ namespace tinyrefl::detail
 
         void pop_handler()
         {
-            // delete _stack.back();
+            delete _stack.back();
             _stack.pop_back();
         }
 
