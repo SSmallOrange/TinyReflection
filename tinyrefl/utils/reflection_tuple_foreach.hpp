@@ -36,17 +36,23 @@ inline void for_each_serializable_member(T&& object, Function&& function) {
 
 	if constexpr (serializable_count <= 0) {
 		return;
-	}
+	} else {
+		// Use the first serializable member's index (from serializable_indices_t) for the
+		// invocable check, instead of hard-coding 0 which may be an ignore<T> field.
+		using SerializableIndices = serializable_indices_t<object_type>;
+		constexpr size_t first_serializable_idx = []<size_t First, size_t... Rest>(
+			::std::index_sequence<First, Rest...>) constexpr { return First; }(SerializableIndices{});
 
-	if constexpr (::std::is_invocable_v<Function, decltype(struct_member_reference<0>(object)), ::std::string_view, size_t>) {
-		[&] <size_t... Is>(::std::index_sequence<Is...>) {
-			size_t serializable_idx = 0;
-			((function(struct_member_reference<Is>(object), object_name_array[Is], serializable_idx++)), ...);
-		}(serializable_indices_t<object_type>{});
-	}
-	else {
-		static_assert(::std::is_invocable_v<Function, ::std::string_view, size_t>, "invalid function args,  \
+		if constexpr (::std::is_invocable_v<Function, decltype(struct_member_reference<first_serializable_idx>(object)), ::std::string_view, size_t>) {
+			[&] <size_t... Is>(::std::index_sequence<Is...>) {
+				size_t serializable_idx = 0;
+				((function(struct_member_reference<Is>(object), object_name_array[Is], serializable_idx++)), ...);
+			}(SerializableIndices{});
+		}
+		else {
+			static_assert(::std::is_invocable_v<Function, ::std::string_view, size_t>, "invalid function args,  \
             param is: [::std::string_view, size_t]");
+		}
 	}
 }
 

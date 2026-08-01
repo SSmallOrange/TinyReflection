@@ -269,6 +269,23 @@ namespace tinyrefl::detail
         }
         bool String(const char *str, ::rapidjson::SizeType length, bool copy) override
         {
+            // Handle char type: assign first character of the string
+            bool char_handled = false;
+            if (_iterator != _struct_member_offset_map.end())
+            {
+                auto offset = _iterator->second;
+                ::std::visit([&](auto arg) {
+                    using Value_Type = typename decltype(arg)::type;
+                    if constexpr (is_char_v<Value_Type>) {
+                        Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                            reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
+                        );
+                        member_value = (length > 0) ? static_cast<Value_Type>(str[0]) : Value_Type{};
+                        char_handled = true;
+                    }
+                }, offset);
+            }
+            if (char_handled) return true;
             return assign_if_match<const char *>([&](auto &member)
                                                  { member = str; });
         }
@@ -409,6 +426,11 @@ namespace tinyrefl::detail
         }
         bool String(const char *str, ::rapidjson::SizeType length, bool copy) override
         {
+            if constexpr (is_char_v<ElementType>) {
+                // Handle vector<char>: each JSON string element contributes its first char
+                _value.emplace_back((length > 0) ? static_cast<ElementType>(str[0]) : ElementType{});
+                return true;
+            }
             return assign_if_match<const char *>([&](auto &member)
                                                  { member = str; });
         }

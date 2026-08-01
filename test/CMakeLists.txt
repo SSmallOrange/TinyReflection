@@ -14,6 +14,8 @@ add_tinyrefl_test(test_reflection_to_json)
 add_tinyrefl_test(test_get_member_offset_map)
 add_tinyrefl_test(test_reflection_from_json)
 add_tinyrefl_test(test_json_serialization_bugs)
+add_tinyrefl_test(test_roundtrip_bugs)
+add_tinyrefl_test(test_edge_cases2)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)
