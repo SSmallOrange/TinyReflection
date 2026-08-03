@@ -19,6 +19,8 @@ add_tinyrefl_test(test_edge_cases2)
 add_tinyrefl_test(test_handler_stack)
 add_tinyrefl_test(test_numeric_and_edge)
 add_tinyrefl_test(test_memory_lifecycle)
+add_tinyrefl_test(test_bug_hunt)
+add_tinyrefl_test(test_string_null_byte)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)

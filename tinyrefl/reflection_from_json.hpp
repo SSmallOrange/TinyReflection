@@ -289,6 +289,14 @@ namespace tinyrefl::detail
                         );
                         member_value = (length > 0) ? static_cast<Value_Type>(str[0]) : Value_Type{};
                         char_handled = true;
+                    } else if constexpr (is_string_v<Value_Type>) {
+                        // Use assign(str, length) to preserve embedded null bytes.
+                        // Assigning via operator=(const char*) would truncate at the first '\0'.
+                        Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                            reinterpret_cast<char*>(static_cast<T*>(&_value)) + arg.value
+                        );
+                        member_value.assign(str, length);
+                        char_handled = true;
                     }
                 }, offset);
             }
@@ -436,6 +444,11 @@ namespace tinyrefl::detail
             if constexpr (is_char_v<ElementType>) {
                 // Handle vector<char>: each JSON string element contributes its first char
                 _value.emplace_back((length > 0) ? static_cast<ElementType>(str[0]) : ElementType{});
+                return true;
+            } else if constexpr (is_string_v<ElementType>) {
+                // Use assign with length to preserve embedded null bytes.
+                // emplace_back(str) would truncate at the first '\0'.
+                _value.emplace_back(str, length);
                 return true;
             }
             return assign_if_match<const char *>([&](auto &member)
