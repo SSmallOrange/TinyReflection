@@ -16,7 +16,7 @@ using namespace std;
 
 struct Point { int x; int y; };
 struct Segment { Point a; Point b; };
-struct Polygon { vector<Point> points; string label; };
+struct Poly { vector<Point> points; string label; };
 
 // nested struct in the middle of a vector, then more fields
 struct Frame {
@@ -83,11 +83,11 @@ TEST_CASE("roundtrip - two adjacent nested structs") {
 // CASE 2: Vector of structs with label field after the vector
 // ============================================================
 TEST_CASE("roundtrip - vector of structs then scalar field") {
-    Polygon poly{ {{0,0},{1,0},{1,1},{0,1}}, "square" };
+    Poly poly{ {{0,0},{1,0},{1,1},{0,1}}, "square" };
     string json;
     tinyrefl::reflection_to_json(poly, json);
 
-    Polygon r{};
+    Poly r{};
     auto st = tinyrefl::reflection_from_json(r, json.c_str());
     CHECK(st.ok);
     REQUIRE(r.points.size() == 4);
@@ -289,7 +289,7 @@ TEST_CASE("from_json - vector of structs with extra keys in each element") {
         "label": "robust"
     })";
 
-    Polygon r{};
+    Poly r{};
     auto st = tinyrefl::reflection_from_json(r, json);
     CHECK(st.ok);
     REQUIRE(r.points.size() == 2);
