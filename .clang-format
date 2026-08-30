@@ -1,0 +1,94 @@
+# TinyReflection - clang-format configuration
+# Based on Google C++ Style Guide
+# Reference: https://google.github.io/styleguide/cppguide.html
+
+BasedOnStyle: Google
+
+# -- 语言 --
+Language: Cpp
+Standard: c++20
+
+# -- 缩进 --
+# Google 标准使用 2 空格缩进
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: -1
+IndentCaseLabels: true
+NamespaceIndentation: None
+IndentPPDirectives: None
+
+# -- 行宽 --
+ColumnLimit: 80
+
+# -- 大括号 --
+BreakBeforeBraces: Attach
+# Google 风格: else 紧跟在 } 后面
+# } else {
+
+# -- 对齐 --
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# -- 空格 --
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# -- 换行 --
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakStringLiterals: true
+
+# -- Include 排序 --
+IncludeBlocks: Regroup
+IncludeCategories:
+  # 项目自身头文件
+  - Regex: '^"'
+    Priority: 1
+  # C 系统头文件
+  - Regex: '^<(assert|complex|ctype|errno|fenv|float|inttypes|iso646|limits|locale|math|setjmp|signal|stdalign|stdarg|stdatomic|stdbool|stddef|stdint|stdio|stdlib|stdnoreturn|string|tgmath|threads|time|uchar|wchar|wctype)\.h>'
+    Priority: 2
+  # C++ 标准库头文件
+  - Regex: '^<'
+    Priority: 3
+SortIncludes: true
+
+# -- 模板 --
+AlwaysBreakTemplateDeclarations: Yes
+
+# -- 构造函数初始化列表 --
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+
+# -- 其他 --
+CompactNamespaces: false
+FixNamespaceComments: true
+MaxEmptyLinesToKeep: 1
+PointerAlignment: Left
+ReflowComments: true
+SortUsingDeclarations: true
+DerivePointerAlignment: false

@@ -1,0 +1,60 @@
+# TinyReflection - clang-tidy configuration
+# Based on Google C++ Style Guide + modern C++ best practices
+
+Checks: >
+  -*,
+  google-*,
+  -google-readability-todo,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  performance-*,
+  cppcoreguidelines-init-variables,
+  misc-unused-using-decls,
+  misc-redundant-expression
+
+# 将以下检查项的违规视为错误（可选，按需开启）
+WarningsAsErrors: ''
+
+HeaderFilterRegex: 'tinyrefl/.*\.(h|hpp)$'
+
+CheckOptions:
+  # Google 命名约定
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConceptCase
+    value: CamelCase
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
