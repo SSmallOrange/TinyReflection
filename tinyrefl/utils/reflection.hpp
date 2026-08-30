@@ -1,19 +1,19 @@
 #pragma once
 
+#include "reflection_get_tuple.hpp"
+
+#include <deque>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <deque>
-
-#include "reflection_get_tuple.hpp"
 
 struct Person {
-	std::string m_name;	
-	int m_age;
-	int m_male;
+  std::string m_name;
+  int m_age;
+  int m_male;
 };
 
 namespace tinyrefl {
-	// get members name strings
+// get members name strings
 
 }  // end namespace tinyrefl

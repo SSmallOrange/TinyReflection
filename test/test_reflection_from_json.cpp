@@ -1,36 +1,36 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include "tinyrefl/reflection_to_json.hpp"
 #include "tinyrefl/reflection_from_json.hpp"
+#include "tinyrefl/reflection_to_json.hpp"
 
-#include <vector>
 #include <string>
+#include <vector>
 
 using namespace std;
 
 struct Inner {
-    int id;
-    string label;
+  int id;
+  string label;
 };
 
 struct Config {
-    bool flag;
-    double ratio;
-    vector<int> values;
-    Inner inner;
-    vector<Inner> inner_list;
+  bool flag;
+  double ratio;
+  vector<int> values;
+  Inner inner;
+  vector<Inner> inner_list;
 };
 
 struct Complex {
-    string name;
-    Config config;
-    vector<vector<int>> matrix;
-    vector<vector<Inner>> inner_matrix;
-    tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // 被忽略的字段
+  string name;
+  Config config;
+  vector<vector<int>> matrix;
+  vector<vector<Inner>> inner_matrix;
+  tinyrefl::ignore<std::shared_ptr<Inner>> ptr;  // 被忽略的字段
 };
 
 TEST_CASE("reflection_from_json - parse succeeds") {
-    const char* json = R"(
+  const char* json = R"(
         {
             "name": "TestComplex",
             "config": {
@@ -64,17 +64,17 @@ TEST_CASE("reflection_from_json - parse succeeds") {
         }
     )";
 
-    auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
+  auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
 
-    // 解析应当返回成功
-    CHECK(ok == true);
+  // 解析应当返回成功
+  CHECK(ok == true);
 
-    // ignore 字段应保持默认值 nullptr
-    CHECK(res.ptr.get() == nullptr);
+  // ignore 字段应保持默认值 nullptr
+  CHECK(res.ptr.get() == nullptr);
 }
 
 TEST_CASE("reflection_from_json - roundtrip to_json does not crash") {
-    const char* json = R"(
+  const char* json = R"(
         {
             "name": "TestComplex",
             "config": {
@@ -94,11 +94,11 @@ TEST_CASE("reflection_from_json - roundtrip to_json does not crash") {
         }
     )";
 
-    auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
-    CHECK(ok == true);
+  auto [ok, res] = tinyrefl::reflection_from_json<Complex>(json);
+  CHECK(ok == true);
 
-    // 序列化回 JSON 应不崩溃
-    std::string output;
-    tinyrefl::reflection_to_json(res, output);
-    CHECK(!output.empty());
+  // 序列化回 JSON 应不崩溃
+  std::string output;
+  tinyrefl::reflection_to_json(res, output);
+  CHECK(!output.empty());
 }
