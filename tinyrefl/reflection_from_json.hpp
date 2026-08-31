@@ -479,6 +479,9 @@ class SequenceReaderHandleImp : public IHandler {
       _dispatch_handler->push_handler<ElementType>(member_offset_map,
                                                    _value.emplace_back());
       return true;
+    } else if constexpr (is_associative_container_v<ElementType>) {
+      _dispatch_handler->push_handler<ElementType>(_value.emplace_back());
+      return true;
     }
     return false;
   }

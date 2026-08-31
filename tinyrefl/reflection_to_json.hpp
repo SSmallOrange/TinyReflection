@@ -196,9 +196,10 @@ inline void to_json_value(Stream&& s, T&& object) {
     if (::std::isinf(object) || ::std::isnan(object)) {
       s.append("null", 4);
     } else {
+      auto normalized = (object == 0) ? static_cast<remove_cvref_t<T>>(0) : object;
       char buffer[32];
       auto [ptr, ec] =
-          ::std::to_chars(buffer, buffer + sizeof(buffer), object);
+          ::std::to_chars(buffer, buffer + sizeof(buffer), normalized);
       s.append(buffer, static_cast<::std::size_t>(ptr - buffer));
     }
   } else {
