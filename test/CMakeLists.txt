@@ -22,6 +22,9 @@ add_tinyrefl_test(test_memory_lifecycle)
 add_tinyrefl_test(test_bug_hunt)
 add_tinyrefl_test(test_string_null_byte)
 add_tinyrefl_test(test_property_roundtrip)
+add_tinyrefl_test(test_deep_nesting)
+add_tinyrefl_test(test_deep_nesting_extreme)
+add_tinyrefl_test(test_real_world_nesting)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)

@@ -88,6 +88,30 @@ struct IHandler {
   }
 };
 
+// SkipHandler: 吸收未知字段子对象/数组中的所有 SAX 事件
+class SkipHandler : public IHandler {
+ public:
+  bool Null() override { return true; }
+  bool Bool(bool) override { return true; }
+  bool Int(int) override { return true; }
+  bool Uint(unsigned) override { return true; }
+  bool Int64(int64_t) override { return true; }
+  bool Uint64(uint64_t) override { return true; }
+  bool Double(double) override { return true; }
+  bool RawNumber(const char*, ::rapidjson::SizeType, bool) override {
+    return true;
+  }
+  bool String(const char*, ::rapidjson::SizeType, bool) override {
+    return true;
+  }
+  bool StartObject() override { return false; }
+  bool Key(const char*, ::rapidjson::SizeType, bool) override { return true; }
+  bool EndObject(::rapidjson::SizeType) override { return true; }
+  bool StartArray() override { return false; }
+  bool EndArray(::rapidjson::SizeType) override { return true; }
+  void set_dispatcher(DispatchHandler*) override {}
+};
+
 class DispatchHandler
     : public ::rapidjson::BaseReaderHandler<::rapidjson::UTF8<>,
                                             DispatchHandler> {
@@ -147,7 +171,10 @@ class DispatchHandler
   }
   bool StartArray() {
     bool result = top()->StartArray();
-    _array_depth.push_back(result);
+    if (!result) {
+      _stack.emplace_back(new SkipHandler());
+    }
+    _array_depth.push_back(true);
     return true;
   }
   bool EndArray(::rapidjson::SizeType elementCount) {
@@ -175,7 +202,10 @@ class DispatchHandler
       return true;
     }
     bool result = top()->StartObject();
-    _nested_depth.push_back(result);
+    if (!result) {
+      _stack.emplace_back(new SkipHandler());
+    }
+    _nested_depth.push_back(true);
     return true;
   }
 
