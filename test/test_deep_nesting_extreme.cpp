@@ -371,7 +371,7 @@ struct SplitMix64 {
   string next_string(int max_len = 20) {
     int len = next_int(0, max_len);
     string s;
-    s.reserve(len);
+    s.reserve(static_cast<size_t>(len));
     for (int i = 0; i < len; ++i) {
       s += static_cast<char>('a' + next_int(0, 25));
     }

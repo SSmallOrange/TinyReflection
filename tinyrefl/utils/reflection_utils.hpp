@@ -282,7 +282,7 @@ inline consteval ::std::string_view get_member_type_name() {
   size_t start = funcName.find("T = ") + 4;
   size_t end = funcName.find("]", start);
   return funcName.substr(start, end - start);
-#elif
+#else
   return "Unsupported compiler";
 #endif
 }

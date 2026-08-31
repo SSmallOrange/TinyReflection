@@ -43,7 +43,7 @@ Complex MakeComplex(std::size_t idx) {
   // values
   obj.config.values.clear();
   for (int i = 0; i < 10; ++i) {
-    obj.config.values.push_back(static_cast<int>(idx * 10 + i));
+    obj.config.values.push_back(static_cast<int>(idx * 10 + static_cast<std::size_t>(i)));
   }
 
   // inner
@@ -54,7 +54,7 @@ Complex MakeComplex(std::size_t idx) {
   obj.config.inner_list.clear();
   for (int i = 0; i < 5; ++i) {
     Inner in;
-    in.id = static_cast<int>(idx * 100 + i);
+    in.id = static_cast<int>(idx * 100 + static_cast<std::size_t>(i));
     in.label = "List_" + std::to_string(idx) + "_" + std::to_string(i);
     obj.config.inner_list.push_back(std::move(in));
   }
@@ -63,7 +63,7 @@ Complex MakeComplex(std::size_t idx) {
   obj.matrix.assign(3, std::vector<int>(3, 0));
   for (int r = 0; r < 3; ++r) {
     for (int c = 0; c < 3; ++c) {
-      obj.matrix[r][c] = static_cast<int>(idx * 1000 + r * 10 + c);
+      obj.matrix[static_cast<std::size_t>(r)][static_cast<std::size_t>(c)] = static_cast<int>(idx * 1000 + static_cast<std::size_t>(r) * 10 + static_cast<std::size_t>(c));
     }
   }
 
@@ -71,8 +71,8 @@ Complex MakeComplex(std::size_t idx) {
   obj.inner_matrix.assign(2, std::vector<Inner>(2));
   for (int r = 0; r < 2; ++r) {
     for (int c = 0; c < 2; ++c) {
-      auto& in = obj.inner_matrix[r][c];
-      in.id = static_cast<int>(idx * 10000 + r * 10 + c);
+      auto& in = obj.inner_matrix[static_cast<std::size_t>(r)][static_cast<std::size_t>(c)];
+      in.id = static_cast<int>(idx * 10000 + static_cast<std::size_t>(r) * 10 + static_cast<std::size_t>(c));
       in.label = "M_" + std::to_string(idx) + "_" + std::to_string(r) + "_" +
                  std::to_string(c);
     }

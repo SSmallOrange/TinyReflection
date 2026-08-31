@@ -1,3 +1,4 @@
+#pragma once
 #include "utils/reflection_tuple_foreach.hpp"
 
 #include <charconv>

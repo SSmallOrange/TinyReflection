@@ -25,9 +25,13 @@ class SequenceReaderHandleImp;
 
 class DispatchHandler;
 
-// Can convert assignment
+// Can convert assignment (require both constructible and assignable to avoid
+// invalid static_cast, e.g. static_cast<std::string>(bool) is ill-formed even
+// though std::string::operator=(char) makes is_assignable_v true)
 template <typename Target, typename From>
-constexpr bool is_json_compatible_v = ::std::is_assignable_v<Target&, From>;
+constexpr bool is_json_compatible_v =
+    ::std::is_constructible_v<Target, From> &&
+    ::std::is_assignable_v<Target&, From>;
 
 template <typename T, typename IndexSeq>
 struct ReaderHandlerHelper;
@@ -694,10 +698,10 @@ struct Status {
   bool ok = true;
   Error error;
 
-  operator bool() { return ok; }
+  operator bool() const { return ok; }
 };
 
-static inline ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
+inline ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
     ::std::string_view s, ::std::size_t offset) {
   ::std::size_t line = 1, col = 1;
   const ::std::size_t n = ::std::min(offset, s.size());
@@ -712,7 +716,7 @@ static inline ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
   return {line, col};
 }
 
-static inline ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
+inline ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
   using C = ::rapidjson::ParseErrorCode;
   switch (code) {
     case C::kParseErrorNone:
@@ -751,8 +755,8 @@ static inline ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
   }
 }
 
-static inline ::std::string translate_message(ErrorKind k,
-                                              ::rapidjson::ParseErrorCode code) {
+inline ::std::string translate_message(ErrorKind k,
+                                      ::rapidjson::ParseErrorCode code) {
   switch (k) {
     case ErrorKind::SyntaxError:
       return "JSON syntax error";

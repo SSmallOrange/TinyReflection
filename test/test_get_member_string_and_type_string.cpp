@@ -28,7 +28,7 @@ TEST_CASE("struct_members_to_tuple - get member names") {
 
 TEST_CASE("struct_members_to_tuple - get member type names") {
   constexpr auto tp_tuple = tinyrefl::detail::struct_members_to_tuple<Person>();
-  constexpr auto count = std::tuple_size_v<decltype(tp_tuple)>;
+  [[maybe_unused]] constexpr auto count = std::tuple_size_v<decltype(tp_tuple)>;
 
   // 验证可以获取类型名
   [[maybe_unused]] auto type0 =

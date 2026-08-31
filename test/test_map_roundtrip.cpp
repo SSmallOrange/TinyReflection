@@ -354,9 +354,9 @@ struct SplitMix64 {
     return static_cast<double>(next() >> 11) / (1ULL << 53);
   }
   std::string next_string(int max_len = 20) {
-    int len = next() % (max_len + 1);
+    auto len = static_cast<int>(next() % static_cast<uint64_t>(max_len + 1));
     std::string s;
-    s.reserve(len);
+    s.reserve(static_cast<size_t>(len));
     for (int i = 0; i < len; ++i) {
       // 可打印 ASCII（避免控制字符简化比较）
       s.push_back(static_cast<char>(32 + next() % 95));
