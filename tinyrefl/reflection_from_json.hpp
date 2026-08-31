@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "thirdparty/rapidjson/error/en.h"
 #include "thirdparty/rapidjson/reader.h"
 #include "utils/reflection_get_tuple.hpp"
@@ -129,42 +131,34 @@ class DispatchHandler
     static auto member_offset_map = struct_member_offset_map<T>();
     this->push_handler(member_offset_map, value);
   }
-  ~DispatchHandler() {
-    while (!_stack.empty()) {
-      delete _stack.back();
-      _stack.pop_back();
-    }
-  }
+  ~DispatchHandler() = default;
 
  public:
   template <typename T>
     requires is_custom_type_v<T>
   void push_handler(const typename ReaderHandler<T>::MapType& map, T& value) {
-    auto* h = new ReaderHandler<T>(map, value);
+    auto h = ::std::make_unique<ReaderHandler<T>>(map, value);
     h->set_dispatcher(this);
-    _stack.emplace_back(h);
+    _stack.emplace_back(::std::move(h));
   }
 
   template <typename T>
     requires is_sequence_container_v<T>
   void push_handler(T& value) {
-    auto* h = new SequenceReaderHandler<T>(value);
+    auto h = ::std::make_unique<SequenceReaderHandler<T>>(value);
     h->set_dispatcher(this);
-    _stack.emplace_back(h);
+    _stack.emplace_back(::std::move(h));
   }
 
   template <typename T>
     requires is_associative_container_v<T>
   void push_handler(T& value) {
-    auto* h = new AssociativeReaderHandler<T>(value);
+    auto h = ::std::make_unique<AssociativeReaderHandler<T>>(value);
     h->set_dispatcher(this);
-    _stack.emplace_back(h);
+    _stack.emplace_back(::std::move(h));
   }
 
-  void pop_handler() {
-    delete _stack.back();
-    _stack.pop_back();
-  }
+  void pop_handler() { _stack.pop_back(); }
 
  public:
   bool Bool(bool b) { return top()->Bool(b); }
@@ -188,7 +182,7 @@ class DispatchHandler
   bool StartArray() {
     bool result = top()->StartArray();
     if (!result) {
-      _stack.emplace_back(new SkipHandler());
+      _stack.emplace_back(::std::make_unique<SkipHandler>());
     }
     _array_depth.push_back(true);
     return true;
@@ -219,7 +213,7 @@ class DispatchHandler
     }
     bool result = top()->StartObject();
     if (!result) {
-      _stack.emplace_back(new SkipHandler());
+      _stack.emplace_back(::std::make_unique<SkipHandler>());
     }
     _nested_depth.push_back(true);
     return true;
@@ -241,10 +235,10 @@ class DispatchHandler
   }
 
  private:
-  IHandler* top() const { return _stack.back(); }
+  IHandler* top() const { return _stack.back().get(); }
 
  private:
-  ::std::vector<IHandler*> _stack;
+  ::std::vector<::std::unique_ptr<IHandler>> _stack;
   ::std::vector<bool> _nested_depth;
   ::std::vector<bool> _array_depth;
 
