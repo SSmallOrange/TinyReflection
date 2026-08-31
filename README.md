@@ -8,7 +8,12 @@ TinyReflection is a simple reflection library for Modern C++.
 
 - [✨ 特性](#-特性)
 - [📦 使用](#-使用)
-- [🔭 TODO](#-TODO)
+- [🔭 TODO](#-todo)
+  - [🔴 P0 — 基础类型补齐](#-p0--基础类型补齐)
+  - [🟠 P1 — 易用性增强](#-p1--易用性增强)
+  - [🟡 P2 — 扩展性建设](#-p2--扩展性建设)
+  - [🟢 P3 — 实用能力](#-p3--实用能力)
+  - [🔵 P4 — 生态与前沿](#-p4--生态与前沿)
 
 
 ## ✨ 特性
@@ -116,5 +121,31 @@ int main() {
 
 ## 🔭 TODO
 
-- 支持更多类型：`T[N]`、`std::array<T>`、`std::optional`、`std::variant`等
-- 支持自定义结构体序列化方案
+### 🔴 P0 — 基础类型补齐
+
+- [ ] 支持 `std::optional<T>`：序列化时 `nullopt → null`，反序列化时 `null → nullopt`
+- [ ] 支持 `enum` / `enum class`：提供整数模式和字符串模式（利用 `__PRETTY_FUNCTION__` 编译期提取枚举值名称）
+- [ ] 支持 `std::array<T, N>` / `T[N]`：序列化为 JSON array，反序列化时做长度校验
+- [ ] 支持 `std::variant<Ts...>`：采用 tagged union 的 JSON 表示（如 `{"type": "A", "value": {...}}`）
+
+### 🟠 P1 — 易用性增强
+
+- [ ] 缺失字段策略：提供宽松模式（保留默认值）和严格模式（缺少必填字段时报错），配合 `std::optional` 缺失字段自动设为 `nullopt`
+- [ ] 字段重命名 / 别名：支持 C++ 成员名与 JSON key 不一致的场景（如 `snake_case` ↔ `camelCase`）
+- [ ] 继承支持：提供轻量机制声明基类关系，序列化时先处理基类字段再处理派生类字段
+
+### 🟡 P2 — 扩展性建设
+
+- [ ] 自定义序列化钩子：通过 ADL 扩展点让用户为第三方类型（如 `std::chrono::time_point`、`glm::vec3` 等）提供序列化/反序列化实现
+- [ ] 多序列化格式支持：将反射遍历与格式输出解耦，设计 `Serializer` concept，在 JSON 基础上扩展 MessagePack / CBOR 等二进制格式
+- [ ] 编译期 JSON Schema 生成：利用已有反射信息自动生成 [JSON Schema](https://json-schema.org/)，用于接口文档化和数据校验
+
+### 🟢 P3 — 实用能力
+
+- [ ] Diff / Patch：支持结构体差异对比与差异应用，适用于配置热更新、状态同步等场景
+- [ ] 性能优化：探索 SIMD JSON 解析（如 simdjson）、`constexpr` 友好结构的编译期 JSON 生成、`std::string_view` 字段的 Zero-copy 反序列化
+
+### 🔵 P4 — 生态与前沿
+
+- [ ] 包管理器发布：发布到 vcpkg / conan / xmake，提供 `TinyReflectionConfig.cmake` 和单头文件合并版本
+- [ ] C++26 静态反射兼容：关注 P2996 提案进展，设计兼容层使底层实现可平滑切换到语言原生反射
