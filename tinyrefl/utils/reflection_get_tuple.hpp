@@ -150,9 +150,9 @@ struct get_member_references_tuple {
     }
   }
 
-  inline static auto get_reference_value(T&& t) {
+  inline static auto get_reference_value(T&& /*t*/) {
     if constexpr (N <= 0) {
-      static_assert(NULL <= 0,
+      static_assert(N <= 0,
                     "Too few structural member parameters (size <= 0)");
     } else {
       static_assert(N > 5, "Too many structural member parameters (size >= 5)");
@@ -213,7 +213,6 @@ inline const auto& struct_member_offset_array() {
   using member_offset_array_t = ::std::array<offset_v, members_count_v<T>>;
 
   constexpr ::std::size_t members_count = members_count_v<T>;
-  constexpr auto members_tuple = struct_members_to_tuple<T>();
   static member_offset_array_t offset_array = {
       [&]<size_t... Is>(
           ::std::index_sequence<Is...>) mutable -> member_offset_array_t {
@@ -301,7 +300,7 @@ template <::std::size_t Target, ::std::size_t... Pack>
 consteval ::std::size_t index_in_pack() {
   ::std::size_t result = 0;
   ::std::size_t idx = 0;
-  ((Pack == Target ? (result = idx, false) : (++idx, true)) && ...);
+  (void)((Pack == Target ? (result = idx, false) : (++idx, true)) && ...);
   return result;
 }
 

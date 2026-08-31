@@ -262,7 +262,7 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
         _value(value) {}
 
  public:
-  bool Null() {
+  bool Null() override {
     if (_iterator != _struct_member_offset_map.end()) {
       // TODO
     }
@@ -270,33 +270,45 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   }
 
   bool Bool(bool b) override {
-    return assign_if_match<bool>([&](auto& member) { member = b; });
+    return assign_if_match<bool>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(b);
+    });
   }
 
   bool Int(int i) override {
-    return assign_if_match<int>([&](auto& member) { member = i; });
+    return assign_if_match<int>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint(unsigned u) override {
-    return assign_if_match<unsigned>([&](auto& member) { member = u; });
+    return assign_if_match<unsigned>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
 
   bool Int64(int64_t i) override {
-    return assign_if_match<int64_t>([&](auto& member) { member = i; });
+    return assign_if_match<int64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint64(uint64_t u) override {
-    return assign_if_match<uint64_t>([&](auto& member) { member = u; });
+    return assign_if_match<uint64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
   bool Double(double d) override {
-    return assign_if_match<double>([&](auto& member) { member = d; });
+    return assign_if_match<double>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(d);
+    });
   }
-  bool RawNumber(const char* str, ::rapidjson::SizeType length,
-                 bool copy) override {
+  bool RawNumber(const char* str, ::rapidjson::SizeType /*length*/,
+                 bool /*copy*/) override {
     return assign_if_match<const char*>([&](auto& member) { member = str; });
   }
   bool String(const char* str, ::rapidjson::SizeType length,
-              bool copy) override {
+              bool /*copy*/) override {
     // Handle char type: assign first character of the string
     bool char_handled = false;
     if (_iterator != _struct_member_offset_map.end()) {
@@ -357,12 +369,11 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
     }
     return false;
   }
-  bool Key(const char* str, ::rapidjson::SizeType length, bool copy) override {
+  bool Key(const char* str, ::rapidjson::SizeType length, bool /*copy*/) override {
     _iterator = _struct_member_offset_map.find(::std::string(str, length));
-    bool found = (_iterator != _struct_member_offset_map.end());
     return true;
   }
-  bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
+  bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }
   bool StartArray() override {
     bool found = (_iterator != _struct_member_offset_map.end());
     if (found) {
@@ -384,7 +395,7 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
     }
     return false;
   }
-  bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
+  bool EndArray(::rapidjson::SizeType /*elementCount*/) override { return true; }
 
  private:
   template <typename TargetType, typename F>
@@ -396,10 +407,9 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
             using Value_Type = typename decltype(arg)::type;
             if constexpr (is_json_compatible_v<remove_cvref_t<Value_Type>,
                                                TargetType>) {
-              Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+              auto* member_ptr = reinterpret_cast<Value_Type*>(
                   reinterpret_cast<char*>(static_cast<T*>(&_value)) +
                   arg.value);
-              auto member_ptr = (Value_Type*)((char*)(&_value) + arg.value);
               assign_func(*member_ptr);
             }
           },
@@ -429,36 +439,48 @@ class SequenceReaderHandleImp : public IHandler {
   SequenceReaderHandleImp(T& value) : _value(value) {}
 
  public:
-  bool Null() { return true; }
+  bool Null() override { return true; }
 
   bool Bool(bool b) override {
-    return assign_if_match<bool>([&](auto& member) { member = b; });
+    return assign_if_match<bool>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(b);
+    });
   }
 
   bool Int(int i) override {
-    return assign_if_match<int>([&](auto& member) { member = i; });
+    return assign_if_match<int>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint(unsigned u) override {
-    return assign_if_match<unsigned>([&](auto& member) { member = u; });
+    return assign_if_match<unsigned>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
 
   bool Int64(int64_t i) override {
-    return assign_if_match<int64_t>([&](auto& member) { member = i; });
+    return assign_if_match<int64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint64(uint64_t u) override {
-    return assign_if_match<uint64_t>([&](auto& member) { member = u; });
+    return assign_if_match<uint64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
   bool Double(double d) override {
-    return assign_if_match<double>([&](auto& member) { member = d; });
+    return assign_if_match<double>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(d);
+    });
   }
-  bool RawNumber(const char* str, ::rapidjson::SizeType length,
-                 bool copy) override {
+  bool RawNumber(const char* str, ::rapidjson::SizeType /*length*/,
+                 bool /*copy*/) override {
     return assign_if_match<const char*>([&](auto& member) { member = str; });
   }
   bool String(const char* str, ::rapidjson::SizeType length,
-              bool copy) override {
+              bool /*copy*/) override {
     if constexpr (is_char_v<ElementType>) {
       // Handle vector<char>: each JSON string element contributes its first
       // char
@@ -485,10 +507,10 @@ class SequenceReaderHandleImp : public IHandler {
     }
     return false;
   }
-  bool Key(const char* str, ::rapidjson::SizeType length, bool copy) override {
+  bool Key(const char* /*str*/, ::rapidjson::SizeType /*length*/, bool /*copy*/) override {
     return true;
   }
-  bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
+  bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }
   bool StartArray() override {
     if constexpr (is_sequence_container_v<ElementType>) {
       _dispatch_handler->push_handler<ElementType>(_value.emplace_back());
@@ -496,7 +518,7 @@ class SequenceReaderHandleImp : public IHandler {
     }
     return false;
   }
-  bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
+  bool EndArray(::rapidjson::SizeType /*elementCount*/) override { return true; }
 
  private:
   template <typename TargetType, typename F>
@@ -531,36 +553,48 @@ class AssociativeReaderHandleImp : public IHandler {
   bool Null() override { return true; }
 
   bool Bool(bool b) override {
-    return assign_value<bool>([&](auto& member) { member = b; });
+    return assign_value<bool>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(b);
+    });
   }
 
   bool Int(int i) override {
-    return assign_value<int>([&](auto& member) { member = i; });
+    return assign_value<int>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint(unsigned u) override {
-    return assign_value<unsigned>([&](auto& member) { member = u; });
+    return assign_value<unsigned>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
 
   bool Int64(int64_t i) override {
-    return assign_value<int64_t>([&](auto& member) { member = i; });
+    return assign_value<int64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(i);
+    });
   }
 
   bool Uint64(uint64_t u) override {
-    return assign_value<uint64_t>([&](auto& member) { member = u; });
+    return assign_value<uint64_t>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(u);
+    });
   }
 
   bool Double(double d) override {
-    return assign_value<double>([&](auto& member) { member = d; });
+    return assign_value<double>([&](auto& member) {
+      member = static_cast<remove_cvref_t<decltype(member)>>(d);
+    });
   }
 
-  bool RawNumber(const char* str, ::rapidjson::SizeType length,
-                 bool copy) override {
+  bool RawNumber(const char* /*str*/, ::rapidjson::SizeType /*length*/,
+                 bool /*copy*/) override {
     return true;
   }
 
   bool String(const char* str, ::rapidjson::SizeType length,
-              bool copy) override {
+              bool /*copy*/) override {
     if constexpr (is_char_v<MappedType>) {
       _value[_current_key] =
           (length > 0) ? static_cast<MappedType>(str[0]) : MappedType{};
@@ -587,12 +621,12 @@ class AssociativeReaderHandleImp : public IHandler {
   }
 
   bool Key(const char* str, ::rapidjson::SizeType length,
-           bool copy) override {
+           bool /*copy*/) override {
     _current_key.assign(str, length);
     return true;
   }
 
-  bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
+  bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }
 
   bool StartArray() override {
     if constexpr (is_sequence_container_v<MappedType>) {
@@ -603,7 +637,7 @@ class AssociativeReaderHandleImp : public IHandler {
     return false;
   }
 
-  bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
+  bool EndArray(::rapidjson::SizeType /*elementCount*/) override { return true; }
 
  private:
   template <typename TargetType, typename F>
@@ -663,7 +697,7 @@ struct Status {
   operator bool() { return ok; }
 };
 
-static ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
+static inline ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
     ::std::string_view s, ::std::size_t offset) {
   ::std::size_t line = 1, col = 1;
   const ::std::size_t n = ::std::min(offset, s.size());
@@ -678,7 +712,7 @@ static ::std::pair<::std::size_t, ::std::size_t> offset_to_linecol(
   return {line, col};
 }
 
-static ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
+static inline ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
   using C = ::rapidjson::ParseErrorCode;
   switch (code) {
     case C::kParseErrorNone:
@@ -717,8 +751,8 @@ static ErrorKind map_kind(::rapidjson::ParseErrorCode code) {
   }
 }
 
-static ::std::string translate_message(ErrorKind k,
-                                       ::rapidjson::ParseErrorCode code) {
+static inline ::std::string translate_message(ErrorKind k,
+                                              ::rapidjson::ParseErrorCode code) {
   switch (k) {
     case ErrorKind::SyntaxError:
       return "JSON syntax error";
