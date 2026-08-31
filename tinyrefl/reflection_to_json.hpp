@@ -1,4 +1,5 @@
 #pragma once
+#include "enum_reflection.hpp"
 #include "utils/reflection_tuple_foreach.hpp"
 
 #include <charconv>
@@ -45,6 +46,11 @@ inline void to_json_value(Stream&& s, T&& object)
 template <OutputStream Stream, typename T>
   requires(is_int_v<T> || is_int64_v<T> || is_floating_v<T>)
 inline void to_json_value(Stream&& s, T&& object);
+
+// enum forward decl
+template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object)
+  requires is_enum_v<T>;
 
 // implement
 template <typename T>
@@ -205,6 +211,32 @@ inline void to_json_value(Stream&& s, T&& object) {
     }
   } else {
     s.append(::std::to_string(object));
+  }
+}
+
+// enum to json: as name string by default; unnamed values fall back to integer.
+template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object)
+  requires is_enum_v<T>
+{
+  using E = remove_cvref_t<T>;
+  constexpr auto mode = ::tinyrefl::enum_serialize_policy<E>::mode;
+  if constexpr (mode == ::tinyrefl::enum_serialize_mode::as_string) {
+    auto name = ::tinyrefl::enum_to_string(static_cast<E>(object));
+    if (!name.empty()) {
+      s.append("\"", 1);
+      for (::std::size_t i = 0; i < name.size(); ++i) {
+        escape_json_char(s, name[i]);
+      }
+      s.append("\"", 1);
+    } else {
+      auto underlying = ::tinyrefl::enum_to_underlying(static_cast<E>(object));
+      s.append(::std::to_string(
+          static_cast<::std::int64_t>(underlying)));
+    }
+  } else {
+    auto underlying = ::tinyrefl::enum_to_underlying(static_cast<E>(object));
+    s.append(::std::to_string(static_cast<::std::int64_t>(underlying)));
   }
 }
 

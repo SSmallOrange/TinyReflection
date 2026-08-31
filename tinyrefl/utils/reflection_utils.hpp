@@ -88,6 +88,10 @@ template <typename T>
 inline constexpr bool is_floating_v =
     ::std::is_floating_point_v<remove_cvref_t<T>>;
 
+// Check is enum / enum class
+template <typename T>
+inline constexpr bool is_enum_v = ::std::is_enum_v<remove_cvref_t<T>>;
+
 // Check is smart pointer (shared_ptr, unique_ptr, weak_ptr)
 template <typename T>
 inline constexpr bool is_smart_pointer_v =
@@ -194,6 +198,7 @@ inline constexpr bool is_serializable_v =
 
 template <typename T>
 inline constexpr bool is_custom_type_v =
+    !is_enum_v<remove_cvref_t<T>> &&
     !is_sequence_container_v<remove_cvref_t<T>> &&
     !is_associative_container_v<remove_cvref_t<T>> &&
     !is_string_v<remove_cvref_t<T>> && !is_char_v<remove_cvref_t<T>> &&

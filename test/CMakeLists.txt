@@ -28,6 +28,7 @@ add_tinyrefl_test(test_real_world_nesting)
 add_tinyrefl_test(test_map_roundtrip)
 add_tinyrefl_test(test_vector_of_maps)
 add_tinyrefl_test(test_new_bug_hunt)
+add_tinyrefl_test(test_enum)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)

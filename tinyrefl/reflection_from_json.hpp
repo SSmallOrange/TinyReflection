@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 
+#include "enum_reflection.hpp"
 #include "thirdparty/rapidjson/error/en.h"
 #include "thirdparty/rapidjson/reader.h"
 #include "utils/reflection_get_tuple.hpp"
@@ -332,6 +333,17 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
                   arg.value);
               member_value.assign(str, length);
               char_handled = true;
+            } else if constexpr (is_enum_v<Value_Type>) {
+              // Enum member from JSON string: parse by enumerator name.
+              auto parsed = ::tinyrefl::enum_from_string<Value_Type>(
+                  ::std::string_view(str, length));
+              if (parsed.has_value()) {
+                Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                    reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                    arg.value);
+                member_value = parsed.value();
+              }
+              char_handled = true;
             }
           },
           offset);
@@ -405,8 +417,22 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
       ::std::visit(
           [&](auto arg) {
             using Value_Type = typename decltype(arg)::type;
-            if constexpr (is_json_compatible_v<remove_cvref_t<Value_Type>,
-                                               TargetType>) {
+            if constexpr (is_enum_v<Value_Type> &&
+                          ::std::is_integral_v<TargetType> &&
+                          !::std::is_same_v<TargetType, bool>) {
+              // Enum member from integer: validate via enum_cast, drop if invalid.
+              auto* member_ptr = reinterpret_cast<Value_Type*>(
+                  reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                  arg.value);
+              ::std::underlying_type_t<Value_Type> probe{};
+              assign_func(probe);
+              if (auto casted =
+                      ::tinyrefl::enum_cast<Value_Type>(probe);
+                  casted.has_value()) {
+                *member_ptr = casted.value();
+              }
+            } else if constexpr (is_json_compatible_v<
+                                     remove_cvref_t<Value_Type>, TargetType>) {
               auto* member_ptr = reinterpret_cast<Value_Type*>(
                   reinterpret_cast<char*>(static_cast<T*>(&_value)) +
                   arg.value);
@@ -492,6 +518,13 @@ class SequenceReaderHandleImp : public IHandler {
       // emplace_back(str) would truncate at the first '\0'.
       _value.emplace_back(str, length);
       return true;
+    } else if constexpr (is_enum_v<ElementType>) {
+      auto parsed = ::tinyrefl::enum_from_string<ElementType>(
+          ::std::string_view(str, length));
+      if (parsed.has_value()) {
+        _value.emplace_back(parsed.value());
+      }
+      return true;
     }
     return assign_if_match<const char*>([&](auto& member) { member = str; });
   }
@@ -523,8 +556,17 @@ class SequenceReaderHandleImp : public IHandler {
  private:
   template <typename TargetType, typename F>
   bool assign_if_match(F&& assign_func) {
-    if constexpr (is_json_compatible_v<remove_cvref_t<ElementType>,
-                                       TargetType>) {
+    if constexpr (is_enum_v<ElementType> &&
+                  ::std::is_integral_v<TargetType> &&
+                  !::std::is_same_v<TargetType, bool>) {
+      ::std::underlying_type_t<ElementType> probe{};
+      assign_func(probe);
+      if (auto casted = ::tinyrefl::enum_cast<ElementType>(probe);
+          casted.has_value()) {
+        _value.emplace_back(casted.value());
+      }
+    } else if constexpr (is_json_compatible_v<remove_cvref_t<ElementType>,
+                                              TargetType>) {
       assign_func(_value.emplace_back());
     }
     return true;
