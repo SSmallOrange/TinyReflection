@@ -3,8 +3,10 @@
 #include "reflection_utils.hpp"
 
 #include <string>
-#include <unordered_map>
 #include <variant>
+
+#include "tinyrefl/thirdparty/frozen/string.h"
+#include "tinyrefl/thirdparty/frozen/unordered_map.h"
 
 namespace tinyrefl::detail {
 
@@ -313,15 +315,11 @@ inline auto get_variant_map_filtered_impl(::std::index_sequence<Is...>) {
   using Tuple = decltype(struct_members_to_tuple<U>());
   using ValueType = decltype(get_variant_type<U, Tuple, Is...>());
 
-  std::unordered_map<std::string, ValueType> result;
-  ((result.emplace(
-       std::string(member_name_arr[Is]),
+  return ::frozen::unordered_map<::frozen::string, ValueType, sizeof...(Is)>{
+      {::frozen::string(member_name_arr[Is]),
        ValueType{::std::in_place_index<index_in_pack<Is, Is...>()>,
                  offset_of_member<decltype(remove_tuple_cv_type<Is, Tuple>())>{
-                     member_offset_arr[Is]}})),
-   ...);
-
-  return result;
+                     member_offset_arr[Is]}}}...};
 }
 
 // get struct member offset map

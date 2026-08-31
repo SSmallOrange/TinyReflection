@@ -257,7 +257,9 @@ template <typename T, size_t... Is>
 struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   using Tuple = decltype(struct_members_to_tuple<T>());
   using ValueType = decltype(get_variant_type<T, Tuple, Is...>());
-  using MapType = ::std::unordered_map<::std::string, ValueType>;
+  using MapType =
+      ::frozen::unordered_map<::frozen::string, ValueType,
+                              serializable_members_count_v<T>>;
 
  public:
   ReaderHandlerImp(const MapType& map_value, T& value)
@@ -374,7 +376,7 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
     return false;
   }
   bool Key(const char* str, ::rapidjson::SizeType length, bool /*copy*/) override {
-    _iterator = _struct_member_offset_map.find(::std::string(str, length));
+    _iterator = _struct_member_offset_map.find(::frozen::string(str, length));
     return true;
   }
   bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }

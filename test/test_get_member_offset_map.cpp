@@ -5,6 +5,8 @@
 #include <format>
 #include <string>
 
+#include "tinyrefl/thirdparty/frozen/string.h"
+
 TEST_CASE("struct_member_offset_array - basic functionality") {
   auto& arr = tinyrefl::detail::struct_member_offset_array<Person>();
 
@@ -30,7 +32,8 @@ TEST_CASE("struct_member_offset_map - basic functionality") {
 
   // 每个成员名都应该在 map 中找到
   for (size_t i = 0; i < member_name_arr.size(); ++i) {
-    auto it = member_offset_map.find(std::string(member_name_arr[i]));
+    auto it = member_offset_map.find(
+        ::frozen::string(member_name_arr[i].data(), member_name_arr[i].size()));
     CHECK(it != member_offset_map.end());
   }
 }
