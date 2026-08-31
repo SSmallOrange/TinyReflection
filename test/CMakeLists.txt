@@ -25,6 +25,7 @@ add_tinyrefl_test(test_property_roundtrip)
 add_tinyrefl_test(test_deep_nesting)
 add_tinyrefl_test(test_deep_nesting_extreme)
 add_tinyrefl_test(test_real_world_nesting)
+add_tinyrefl_test(test_map_roundtrip)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)

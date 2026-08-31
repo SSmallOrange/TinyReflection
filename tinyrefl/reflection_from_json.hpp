@@ -13,6 +13,10 @@ template <typename T>
   requires is_sequence_container_v<T>
 struct SequenceReaderHandler;
 
+template <typename T>
+  requires is_associative_container_v<T>
+struct AssociativeReaderHandler;
+
 template <typename T, typename IndexSeq>
 struct ReaderHandlerImp;
 
@@ -141,6 +145,14 @@ class DispatchHandler
     requires is_sequence_container_v<T>
   void push_handler(T& value) {
     auto* h = new SequenceReaderHandler<T>(value);
+    h->set_dispatcher(this);
+    _stack.emplace_back(h);
+  }
+
+  template <typename T>
+    requires is_associative_container_v<T>
+  void push_handler(T& value) {
+    auto* h = new AssociativeReaderHandler<T>(value);
     h->set_dispatcher(this);
     _stack.emplace_back(h);
   }
@@ -332,6 +344,12 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
               _dispatch_handler->push_handler<Value_Type>(member_offset_map,
                                                           member_value);
               pushed = true;
+            } else if constexpr (is_associative_container_v<Value_Type>) {
+              Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                  reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                  arg.value);
+              _dispatch_handler->push_handler<Value_Type>(member_value);
+              pushed = true;
             }
           },
           offset);
@@ -495,6 +513,120 @@ class SequenceReaderHandleImp : public IHandler {
  private:
   T& _value;
   DispatchHandler* _dispatch_handler = nullptr;
+};
+
+// AssociativeReaderHandleImp: 处理 map/unordered_map 的反序列化
+template <typename T>
+class AssociativeReaderHandleImp : public IHandler {
+  using KeyType = typename remove_cvref_t<T>::key_type;
+  using MappedType = typename remove_cvref_t<T>::mapped_type;
+
+ public:
+  AssociativeReaderHandleImp(T& value) : _value(value) {}
+
+ public:
+  bool Null() override { return true; }
+
+  bool Bool(bool b) override {
+    return assign_value<bool>([&](auto& member) { member = b; });
+  }
+
+  bool Int(int i) override {
+    return assign_value<int>([&](auto& member) { member = i; });
+  }
+
+  bool Uint(unsigned u) override {
+    return assign_value<unsigned>([&](auto& member) { member = u; });
+  }
+
+  bool Int64(int64_t i) override {
+    return assign_value<int64_t>([&](auto& member) { member = i; });
+  }
+
+  bool Uint64(uint64_t u) override {
+    return assign_value<uint64_t>([&](auto& member) { member = u; });
+  }
+
+  bool Double(double d) override {
+    return assign_value<double>([&](auto& member) { member = d; });
+  }
+
+  bool RawNumber(const char* str, ::rapidjson::SizeType length,
+                 bool copy) override {
+    return true;
+  }
+
+  bool String(const char* str, ::rapidjson::SizeType length,
+              bool copy) override {
+    if constexpr (is_char_v<MappedType>) {
+      _value[_current_key] =
+          (length > 0) ? static_cast<MappedType>(str[0]) : MappedType{};
+      return true;
+    } else if constexpr (is_string_v<MappedType>) {
+      _value[_current_key].assign(str, length);
+      return true;
+    }
+    return true;
+  }
+
+  bool StartObject() override {
+    if constexpr (is_custom_type_v<MappedType>) {
+      static auto member_offset_map = struct_member_offset_map<MappedType>();
+      auto& inserted = _value[_current_key];
+      _dispatch_handler->push_handler<MappedType>(member_offset_map, inserted);
+      return true;
+    } else if constexpr (is_associative_container_v<MappedType>) {
+      auto& inserted = _value[_current_key];
+      _dispatch_handler->push_handler<MappedType>(inserted);
+      return true;
+    }
+    return false;
+  }
+
+  bool Key(const char* str, ::rapidjson::SizeType length,
+           bool copy) override {
+    _current_key.assign(str, length);
+    return true;
+  }
+
+  bool EndObject(::rapidjson::SizeType memberCount) override { return true; }
+
+  bool StartArray() override {
+    if constexpr (is_sequence_container_v<MappedType>) {
+      auto& inserted = _value[_current_key];
+      _dispatch_handler->push_handler<MappedType>(inserted);
+      return true;
+    }
+    return false;
+  }
+
+  bool EndArray(::rapidjson::SizeType elementCount) override { return true; }
+
+ private:
+  template <typename TargetType, typename F>
+  bool assign_value(F&& assign_func) {
+    if constexpr (is_json_compatible_v<remove_cvref_t<MappedType>,
+                                       TargetType>) {
+      assign_func(_value[_current_key]);
+    }
+    return true;
+  }
+
+ public:
+  void set_dispatcher(DispatchHandler* dispatcher) override {
+    _dispatch_handler = dispatcher;
+  }
+
+ private:
+  T& _value;
+  ::std::string _current_key;
+  DispatchHandler* _dispatch_handler = nullptr;
+};
+
+template <typename T>
+  requires is_associative_container_v<T>
+struct AssociativeReaderHandler : public AssociativeReaderHandleImp<T> {
+  AssociativeReaderHandler(T& value) : AssociativeReaderHandleImp<T>(value) {}
 };
 
 }  // namespace tinyrefl::detail
