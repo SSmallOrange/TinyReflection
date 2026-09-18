@@ -265,7 +265,19 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
  public:
   bool Null() override {
     if (_iterator != _struct_member_offset_map.end()) {
-      // TODO
+      auto offset = _iterator->second;
+      ::std::visit(
+          [&](auto arg) {
+            using Value_Type = typename decltype(arg)::type;
+            if constexpr (is_optional_v<Value_Type>) {
+              // null -> nullopt: reset the optional member.
+              Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                  reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                  arg.value);
+              member_value.reset();
+            }
+          },
+          offset);
     }
     return true;
   }
@@ -344,6 +356,26 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
                 member_value = parsed.value();
               }
               char_handled = true;
+            } else if constexpr (is_optional_v<Value_Type>) {
+              using Inner = optional_inner_type_t<Value_Type>;
+              Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                  reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                  arg.value);
+              if constexpr (is_string_v<Inner>) {
+                // Use emplace(str, length) to preserve embedded null bytes.
+                member_value.emplace(str, length);
+              } else if constexpr (is_char_v<Inner>) {
+                member_value.emplace(
+                    (length > 0) ? static_cast<Inner>(str[0]) : Inner{});
+              } else if constexpr (is_enum_v<Inner>) {
+                // optional<enum> from JSON string: parse by enumerator name.
+                auto parsed = ::tinyrefl::enum_from_string<Inner>(
+                    ::std::string_view(str, length));
+                if (parsed.has_value()) {
+                  member_value.emplace(parsed.value());
+                }
+              }
+              char_handled = true;
             }
           },
           offset);
@@ -374,6 +406,23 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
                   arg.value);
               _dispatch_handler->push_handler<Value_Type>(member_value);
               pushed = true;
+            } else if constexpr (is_optional_v<Value_Type>) {
+              using Inner = optional_inner_type_t<Value_Type>;
+              Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                  reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                  arg.value);
+              if constexpr (is_custom_type_v<Inner>) {
+                static auto member_offset_map =
+                    struct_member_offset_map<Inner>();
+                auto& inner_ref = member_value.emplace();
+                _dispatch_handler->push_handler<Inner>(member_offset_map,
+                                                       inner_ref);
+                pushed = true;
+              } else if constexpr (is_associative_container_v<Inner>) {
+                _dispatch_handler->push_handler<Inner>(
+                    member_value.emplace());
+                pushed = true;
+              }
             }
           },
           offset);
@@ -400,6 +449,16 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
                   arg.value);
               _dispatch_handler->push_handler<Value_Type>(member_value);
               pushed = true;
+            } else if constexpr (is_optional_v<Value_Type>) {
+              using Inner = optional_inner_type_t<Value_Type>;
+              if constexpr (is_sequence_container_v<Inner>) {
+                Value_Type& member_value = *reinterpret_cast<Value_Type*>(
+                    reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                    arg.value);
+                _dispatch_handler->push_handler<Inner>(
+                    member_value.emplace());
+                pushed = true;
+              }
             }
           },
           offset);
@@ -430,6 +489,31 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
                       ::tinyrefl::enum_cast<Value_Type>(probe);
                   casted.has_value()) {
                 *member_ptr = casted.value();
+              }
+            } else if constexpr (is_optional_v<Value_Type>) {
+              using Inner = optional_inner_type_t<Value_Type>;
+              if constexpr (is_enum_v<Inner> &&
+                            ::std::is_integral_v<TargetType> &&
+                            !::std::is_same_v<TargetType, bool>) {
+                // optional<enum> from integer: validate via enum_cast.
+                auto* member_ptr = reinterpret_cast<Value_Type*>(
+                    reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                    arg.value);
+                ::std::underlying_type_t<Inner> probe{};
+                assign_func(probe);
+                if (auto casted = ::tinyrefl::enum_cast<Inner>(probe);
+                    casted.has_value()) {
+                  member_ptr->emplace(casted.value());
+                }
+              } else if constexpr (is_json_compatible_v<
+                                       remove_cvref_t<Value_Type>,
+                                       TargetType>) {
+                // optional scalar from JSON scalar: natural assignment
+                // (optional<T> is constructible/assignable from T).
+                auto* member_ptr = reinterpret_cast<Value_Type*>(
+                    reinterpret_cast<char*>(static_cast<T*>(&_value)) +
+                    arg.value);
+                assign_func(*member_ptr);
               }
             } else if constexpr (is_json_compatible_v<
                                      remove_cvref_t<Value_Type>, TargetType>) {
@@ -465,7 +549,13 @@ class SequenceReaderHandleImp : public IHandler {
   SequenceReaderHandleImp(T& value) : _value(value) {}
 
  public:
-  bool Null() override { return true; }
+  bool Null() override {
+    if constexpr (is_optional_v<ElementType>) {
+      // null -> nullopt element.
+      _value.emplace_back(::std::nullopt);
+    }
+    return true;
+  }
 
   bool Bool(bool b) override {
     return assign_if_match<bool>([&](auto& member) {
@@ -525,6 +615,22 @@ class SequenceReaderHandleImp : public IHandler {
         _value.emplace_back(parsed.value());
       }
       return true;
+    } else if constexpr (is_optional_v<ElementType>) {
+      using Inner = optional_inner_type_t<ElementType>;
+      if constexpr (is_string_v<Inner>) {
+        // Use emplace(str, length) to preserve embedded null bytes.
+        _value.emplace_back().emplace(str, length);
+      } else if constexpr (is_char_v<Inner>) {
+        _value.emplace_back().emplace(
+            (length > 0) ? static_cast<Inner>(str[0]) : Inner{});
+      } else if constexpr (is_enum_v<Inner>) {
+        auto parsed = ::tinyrefl::enum_from_string<Inner>(
+            ::std::string_view(str, length));
+        if (parsed.has_value()) {
+          _value.emplace_back(parsed.value());
+        }
+      }
+      return true;
     }
     return assign_if_match<const char*>([&](auto& member) { member = str; });
   }
@@ -537,6 +643,17 @@ class SequenceReaderHandleImp : public IHandler {
     } else if constexpr (is_associative_container_v<ElementType>) {
       _dispatch_handler->push_handler<ElementType>(_value.emplace_back());
       return true;
+    } else if constexpr (is_optional_v<ElementType>) {
+      using Inner = optional_inner_type_t<ElementType>;
+      if constexpr (is_custom_type_v<Inner>) {
+        static auto member_offset_map = struct_member_offset_map<Inner>();
+        _dispatch_handler->push_handler<Inner>(
+            member_offset_map, _value.emplace_back().emplace());
+        return true;
+      } else if constexpr (is_associative_container_v<Inner>) {
+        _dispatch_handler->push_handler<Inner>(_value.emplace_back().emplace());
+        return true;
+      }
     }
     return false;
   }
@@ -548,6 +665,12 @@ class SequenceReaderHandleImp : public IHandler {
     if constexpr (is_sequence_container_v<ElementType>) {
       _dispatch_handler->push_handler<ElementType>(_value.emplace_back());
       return true;
+    } else if constexpr (is_optional_v<ElementType>) {
+      using Inner = optional_inner_type_t<ElementType>;
+      if constexpr (is_sequence_container_v<Inner>) {
+        _dispatch_handler->push_handler<Inner>(_value.emplace_back().emplace());
+        return true;
+      }
     }
     return false;
   }
@@ -564,6 +687,22 @@ class SequenceReaderHandleImp : public IHandler {
       if (auto casted = ::tinyrefl::enum_cast<ElementType>(probe);
           casted.has_value()) {
         _value.emplace_back(casted.value());
+      }
+    } else if constexpr (is_optional_v<ElementType>) {
+      using Inner = optional_inner_type_t<ElementType>;
+      if constexpr (is_enum_v<Inner> &&
+                    ::std::is_integral_v<TargetType> &&
+                    !::std::is_same_v<TargetType, bool>) {
+        // optional<enum> element from integer: validate via enum_cast.
+        ::std::underlying_type_t<Inner> probe{};
+        assign_func(probe);
+        if (auto casted = ::tinyrefl::enum_cast<Inner>(probe);
+            casted.has_value()) {
+          _value.emplace_back(casted.value());
+        }
+      } else if constexpr (is_json_compatible_v<
+                               remove_cvref_t<ElementType>, TargetType>) {
+        assign_func(_value.emplace_back());
       }
     } else if constexpr (is_json_compatible_v<remove_cvref_t<ElementType>,
                                               TargetType>) {
@@ -592,7 +731,13 @@ class AssociativeReaderHandleImp : public IHandler {
   AssociativeReaderHandleImp(T& value) : _value(value) {}
 
  public:
-  bool Null() override { return true; }
+  bool Null() override {
+    if constexpr (is_optional_v<MappedType>) {
+      // null -> nullopt mapped value.
+      _value[_current_key].reset();
+    }
+    return true;
+  }
 
   bool Bool(bool b) override {
     return assign_value<bool>([&](auto& member) {
@@ -644,6 +789,16 @@ class AssociativeReaderHandleImp : public IHandler {
     } else if constexpr (is_string_v<MappedType>) {
       _value[_current_key].assign(str, length);
       return true;
+    } else if constexpr (is_optional_v<MappedType>) {
+      using Inner = optional_inner_type_t<MappedType>;
+      if constexpr (is_string_v<Inner>) {
+        // Use emplace(str, length) to preserve embedded null bytes.
+        _value[_current_key].emplace(str, length);
+      } else if constexpr (is_char_v<Inner>) {
+        _value[_current_key].emplace(
+            (length > 0) ? static_cast<Inner>(str[0]) : Inner{});
+      }
+      return true;
     }
     return true;
   }
@@ -658,6 +813,18 @@ class AssociativeReaderHandleImp : public IHandler {
       auto& inserted = _value[_current_key];
       _dispatch_handler->push_handler<MappedType>(inserted);
       return true;
+    } else if constexpr (is_optional_v<MappedType>) {
+      using Inner = optional_inner_type_t<MappedType>;
+      if constexpr (is_custom_type_v<Inner>) {
+        static auto member_offset_map = struct_member_offset_map<Inner>();
+        auto& inner_ref = _value[_current_key].emplace();
+        _dispatch_handler->push_handler<Inner>(member_offset_map, inner_ref);
+        return true;
+      } else if constexpr (is_associative_container_v<Inner>) {
+        _dispatch_handler->push_handler<Inner>(
+            _value[_current_key].emplace());
+        return true;
+      }
     }
     return false;
   }
@@ -675,6 +842,12 @@ class AssociativeReaderHandleImp : public IHandler {
       auto& inserted = _value[_current_key];
       _dispatch_handler->push_handler<MappedType>(inserted);
       return true;
+    } else if constexpr (is_optional_v<MappedType>) {
+      using Inner = optional_inner_type_t<MappedType>;
+      if constexpr (is_sequence_container_v<Inner>) {
+        _dispatch_handler->push_handler<Inner>(_value[_current_key].emplace());
+        return true;
+      }
     }
     return false;
   }
@@ -684,8 +857,24 @@ class AssociativeReaderHandleImp : public IHandler {
  private:
   template <typename TargetType, typename F>
   bool assign_value(F&& assign_func) {
-    if constexpr (is_json_compatible_v<remove_cvref_t<MappedType>,
-                                       TargetType>) {
+    if constexpr (is_optional_v<MappedType>) {
+      using Inner = optional_inner_type_t<MappedType>;
+      if constexpr (is_enum_v<Inner> &&
+                    ::std::is_integral_v<TargetType> &&
+                    !::std::is_same_v<TargetType, bool>) {
+        // optional<enum> mapped value from integer: validate via enum_cast.
+        ::std::underlying_type_t<Inner> probe{};
+        assign_func(probe);
+        if (auto casted = ::tinyrefl::enum_cast<Inner>(probe);
+            casted.has_value()) {
+          _value[_current_key].emplace(casted.value());
+        }
+      } else if constexpr (is_json_compatible_v<
+                               remove_cvref_t<MappedType>, TargetType>) {
+        assign_func(_value[_current_key]);
+      }
+    } else if constexpr (is_json_compatible_v<remove_cvref_t<MappedType>,
+                                              TargetType>) {
       assign_func(_value[_current_key]);
     }
     return true;

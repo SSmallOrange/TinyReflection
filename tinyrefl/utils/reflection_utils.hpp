@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <string_view>
@@ -98,6 +99,24 @@ inline constexpr bool is_smart_pointer_v =
     is_template_instant_of<::std::shared_ptr, remove_cvref_t<T>>::value ||
     is_template_instant_of<::std::unique_ptr, remove_cvref_t<T>>::value ||
     is_template_instant_of<::std::weak_ptr, remove_cvref_t<T>>::value;
+
+// Check is optional
+template <typename T>
+inline constexpr bool is_optional_v =
+    is_template_instant_of<::std::optional, remove_cvref_t<T>>::value;
+
+// Get optional inner type (only instantiate when is_optional_v<T> is true)
+template <typename T>
+struct optional_inner_type_impl;
+
+template <typename T>
+struct optional_inner_type_impl<::std::optional<T>> {
+  using type = T;
+};
+
+template <typename T>
+using optional_inner_type_t =
+    typename optional_inner_type_impl<remove_cvref_t<T>>::type;
 
 }  // end namespace tinyrefl::detail
 
@@ -198,6 +217,7 @@ inline constexpr bool is_serializable_v =
 
 template <typename T>
 inline constexpr bool is_custom_type_v =
+    !is_optional_v<remove_cvref_t<T>> &&
     !is_enum_v<remove_cvref_t<T>> &&
     !is_sequence_container_v<remove_cvref_t<T>> &&
     !is_associative_container_v<remove_cvref_t<T>> &&

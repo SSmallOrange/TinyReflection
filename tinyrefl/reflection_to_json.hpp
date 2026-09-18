@@ -52,6 +52,11 @@ template <OutputStream Stream, typename T>
 inline void to_json_value(Stream&& s, T&& object)
   requires is_enum_v<T>;
 
+// optional forward decl
+template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object)
+  requires is_optional_v<T>;
+
 // implement
 template <typename T>
 concept KeyValue = requires(const T& t) {
@@ -237,6 +242,18 @@ inline void to_json_value(Stream&& s, T&& object)
   } else {
     auto underlying = ::tinyrefl::enum_to_underlying(static_cast<E>(object));
     s.append(::std::to_string(static_cast<::std::int64_t>(underlying)));
+  }
+}
+
+// optional to json: nullopt -> null, otherwise serialize the inner value
+template <OutputStream Stream, typename T>
+inline void to_json_value(Stream&& s, T&& object)
+  requires is_optional_v<T>
+{
+  if (!object) {
+    s.append("null", 4);
+  } else {
+    to_json_value(s, *object);
   }
 }
 

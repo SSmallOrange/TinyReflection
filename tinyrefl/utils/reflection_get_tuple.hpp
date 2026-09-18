@@ -18,13 +18,30 @@ struct Wrapper {
 struct Any {
   constexpr Any(int) {}
 
+  // std::optional has a greedy template constructor optional(U&&) that would
+  // compete with the probe conversions during member-count detection
+  // (T{Any(I)...}), making optional members ambiguous. For an optional target
+  // the conversion is therefore only enabled when that constructor path is
+  // not viable itself, i.e. when the inner type is not both constructible and
+  // convertible from Any (std::string / std::vector are ambiguous to
+  // construct from Any). Otherwise the constructor path is used.
   template <typename T>
-    requires(::std::is_copy_constructible_v<T>)
+  static constexpr bool probe_ok() {
+    if constexpr (!is_optional_v<T>) {
+      return true;
+    } else {
+      return !(::std::is_constructible_v<optional_inner_type_t<T>, Any> &&
+               ::std::is_convertible_v<Any, optional_inner_type_t<T>>);
+    }
+  }
+
+  template <typename T>
+    requires(::std::is_copy_constructible_v<T> && probe_ok<T>())
   operator T&();
 
   template <typename T>
     requires(::std::is_move_constructible_v<T> &&
-             !::std::is_copy_constructible_v<T>)
+             !::std::is_copy_constructible_v<T> && probe_ok<T>())
   operator T&&();
 
   struct Empty {};
@@ -32,7 +49,7 @@ struct Any {
   template <typename T>
     requires(!::std::is_copy_constructible_v<T> &&
              !::std::is_move_constructible_v<T> &&
-             !::std::is_constructible_v<T, Empty>)
+             !::std::is_constructible_v<T, Empty> && probe_ok<T>())
   operator T();
 };
 
