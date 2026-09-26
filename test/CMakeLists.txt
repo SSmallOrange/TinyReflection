@@ -1,8 +1,8 @@
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 # 辅助函数
 function(add_tinyrefl_test name)
     add_executable(${name} ${CMAKE_CURRENT_SOURCE_DIR}/${name}.cpp)
+    target_link_libraries(${name} PRIVATE tinyrefl::tinyrefl)
+    target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -33,4 +33,6 @@ add_tinyrefl_test(test_optional)
 
 # 性能测试
 add_executable(test_pref_reflection ${CMAKE_CURRENT_SOURCE_DIR}/test_pref_reflection.cpp)
+target_link_libraries(test_pref_reflection PRIVATE tinyrefl::tinyrefl)
+target_include_directories(test_pref_reflection PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # add_test(NAME test_pref_reflection COMMAND test_pref_reflection)

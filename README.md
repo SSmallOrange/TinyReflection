@@ -22,7 +22,7 @@ TinyReflection is a simple reflection library for Modern C++.
 - ✅ 支持结构体成员的**自动 JSON 序列化和反序列化**
   - 支持嵌套的json数组格式
   - 支持成员字段忽略处理
-- ✅ 支持跨平台编译（`MSVC 19+`、`GCC 11.3+`）
+- ✅ 支持跨平台编译（`MSVC 19.30+`(Visual Studio 2022)、`GCC 11.3+`）
 - ✅ 支持以下成员类型：
   - `std::string`
   - `int`
@@ -38,7 +38,13 @@ TinyReflection is a simple reflection library for Modern C++.
 
 TinyReflection是headonly的，直接将 `tinyrefl` 文件夹加入你的项目中并 `#include` 即可
 
-通过执行build.py能够编译`test`下简单的测试文件，顺序阅读测试文件能够快速了解实现原理。
+通过 CMake Presets 编译并运行 `test` 下简单的测试文件，顺序阅读测试文件能够快速了解实现原理：
+
+```bash
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+```
 
 **使用示例：**
 
