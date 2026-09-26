@@ -323,6 +323,23 @@ consteval ::std::size_t index_in_pack() {
   return result;
 }
 
+// Strict-mode "is required" mask: field `i` is required iff its type isn't
+// `std::optional<...>`. Indexed the same as `_struct_member_offset_map`'s
+// `variant.index()` (see `get_variant_map_filtered_impl`'s `index_in_pack`).
+template <typename T, ::std::size_t... Is>
+inline constexpr auto get_required_mask_impl(::std::index_sequence<Is...>) {
+  using U = remove_cvref_t<T>;
+  using Tuple = decltype(struct_members_to_tuple<U>());
+  return ::std::array<bool, sizeof...(Is)>{
+      !is_optional_v<remove_cvref_t<::std::tuple_element_t<Is, Tuple>>>...};
+}
+
+template <typename T>
+inline constexpr auto struct_required_mask() {
+  using U = remove_cvref_t<T>;
+  return get_required_mask_impl<U>(serializable_indices_t<U>{});
+}
+
 // get variant map filtered impl
 template <typename T, ::std::size_t... Is>
 inline auto get_variant_map_filtered_impl(::std::index_sequence<Is...>) {

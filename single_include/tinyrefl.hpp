@@ -5190,6 +5190,23 @@ consteval ::std::size_t index_in_pack() {
   return result;
 }
 
+// Strict-mode "is required" mask: field `i` is required iff its type isn't
+// `std::optional<...>`. Indexed the same as `_struct_member_offset_map`'s
+// `variant.index()` (see `get_variant_map_filtered_impl`'s `index_in_pack`).
+template <typename T, ::std::size_t... Is>
+inline constexpr auto get_required_mask_impl(::std::index_sequence<Is...>) {
+  using U = remove_cvref_t<T>;
+  using Tuple = decltype(struct_members_to_tuple<U>());
+  return ::std::array<bool, sizeof...(Is)>{
+      !is_optional_v<remove_cvref_t<::std::tuple_element_t<Is, Tuple>>>...};
+}
+
+template <typename T>
+inline constexpr auto struct_required_mask() {
+  using U = remove_cvref_t<T>;
+  return get_required_mask_impl<U>(serializable_indices_t<U>{});
+}
+
 // get variant map filtered impl
 template <typename T, ::std::size_t... Is>
 inline auto get_variant_map_filtered_impl(::std::index_sequence<Is...>) {
@@ -5596,7 +5613,11 @@ inline void reflection_to_json(T&& object, Stream& stream) {
 
 // ---- tinyrefl/reflection_from_json.hpp ----
 
+#include <bitset>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
 
 
 // ---- tinyrefl/thirdparty/rapidjson/error/en.h ----
@@ -13207,6 +13228,14 @@ RAPIDJSON_DIAG_POP
 
 #endif // RAPIDJSON_READER_H_
 
+namespace tinyrefl {
+// Controls how `reflection_from_json` treats fields absent from the input.
+enum class ParseMode {
+  Loose,   // Default; missing fields keep their default-initialized value.
+  Strict,  // Missing non-`std::optional<T>` fields fail with `Status`/`Error`.
+};
+}  // namespace tinyrefl
+
 namespace tinyrefl::detail {
 // declear reader
 template <typename T>
@@ -13329,11 +13358,28 @@ class DispatchHandler
                                             DispatchHandler> {
  public:
   template <AggregateType T>
-  DispatchHandler(T& value) {
+  DispatchHandler(T& value,
+                   ::tinyrefl::ParseMode mode = ::tinyrefl::ParseMode::Loose)
+      : _mode(mode) {
     static auto member_offset_map = struct_member_offset_map<T>();
     this->push_handler(member_offset_map, value);
   }
   ~DispatchHandler() = default;
+
+ public:
+  ::tinyrefl::ParseMode mode() const { return _mode; }
+
+  // Keeps only the first missing field reported (parsing aborts globally
+  // on the first `EndObject() == false`, see `ReaderHandlerImp::EndObject`).
+  void report_missing_field(::std::string_view name) {
+    if (!_missing_field.has_value()) {
+      _missing_field.emplace(name);
+    }
+  }
+
+  const ::std::optional<::std::string>& missing_field() const {
+    return _missing_field;
+  }
 
  public:
   template <typename T>
@@ -13445,6 +13491,8 @@ class DispatchHandler
   ::std::vector<bool> _array_depth;
 
   bool _is_first_member = true;
+  ::tinyrefl::ParseMode _mode = ::tinyrefl::ParseMode::Loose;
+  ::std::optional<::std::string> _missing_field;
 };
 
 // ::rapidjson::BaseReaderHandler<::rapidjson::UTF8<>, ReaderHandlerImp<T,
@@ -13456,6 +13504,11 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   using MapType =
       ::frozen::unordered_map<::frozen::string, ValueType,
                               serializable_members_count_v<T>>;
+
+  // Indexed by the same stable per-field index as `_struct_member_offset_map`
+  // entries' `variant.index()`; true means the field is required in strict
+  // mode (i.e. not `std::optional<T>`). See `struct_required_mask`.
+  static constexpr auto kRequiredMask = struct_required_mask<T>();
 
  public:
   ReaderHandlerImp(const MapType& map_value, T& value)
@@ -13633,9 +13686,26 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   }
   bool Key(const char* str, ::rapidjson::SizeType length, bool /*copy*/) override {
     _iterator = _struct_member_offset_map.find(::frozen::string(str, length));
+    if (_iterator != _struct_member_offset_map.end()) {
+      _seen.set(_iterator->second.index());
+    }
     return true;
   }
-  bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }
+  bool EndObject(::rapidjson::SizeType /*memberCount*/) override {
+    if (_dispatch_handler->mode() == ::tinyrefl::ParseMode::Strict) {
+      for (const auto& [name, value] : _struct_member_offset_map) {
+        const auto idx = value.index();
+        if (kRequiredMask[idx] && !_seen.test(idx)) {
+          // Aborts the whole SAX parse (fail-fast); EndObject fires
+          // innermost-first, so the deepest missing field wins.
+          _dispatch_handler->report_missing_field(
+              ::std::string_view(name.data(), name.size()));
+          return false;
+        }
+      }
+    }
+    return true;
+  }
   bool StartArray() override {
     bool found = (_iterator != _struct_member_offset_map.end());
     if (found) {
@@ -13739,6 +13809,7 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   typename MapType::const_iterator _iterator;
   T& _value;
   DispatchHandler* _dispatch_handler = nullptr;
+  ::std::bitset<serializable_members_count_v<T>> _seen;
 };
 
 // SequenceReaderHandle
@@ -14111,12 +14182,16 @@ enum class ErrorKind {
   StringEscapeInvalid,  // Invalid string escape sequence
   TrailingComma,        // Trailing comma not allowed
   CommentNotAllowed,    // Comments are not allowed
+  MissingRequiredField, // Strict mode: a required field is missing
   Unknown
 };
 
 struct Error {
   ErrorKind kind = ErrorKind::None;
   ::std::string message;
+  // Only non-empty when `kind == ErrorKind::MissingRequiredField`; holds the
+  // name of the missing field as declared on the C++ struct.
+  ::std::string field_name;
   ::std::size_t offset = 0;
   ::std::size_t line = 0;
   ::std::size_t column = 0;
@@ -14202,6 +14277,8 @@ inline ::std::string translate_message(ErrorKind k,
       return "Trailing comma not allowed";
     case ErrorKind::CommentNotAllowed:
       return "Comments are not allowed in JSON";
+    case ErrorKind::MissingRequiredField:
+      return "Missing required field";
     case ErrorKind::Unknown:
       return ::std::string("Parse failed: ") +
              ::rapidjson::GetParseError_En(code);
@@ -14213,8 +14290,9 @@ inline ::std::string translate_message(ErrorKind k,
 
 // Deserialization Interface
 template <detail::AggregateType T>
-inline Status reflection_from_json(T&& object, const char* str) {
-  detail::DispatchHandler handler(object);
+inline Status reflection_from_json(T&& object, const char* str,
+                                    ParseMode mode = ParseMode::Loose) {
+  detail::DispatchHandler handler(object, mode);
   ::rapidjson::StringStream ss(str);
   ::rapidjson::Reader reader;
   auto result = reader.Parse<::rapidjson::kParseDefaultFlags>(ss, handler);
@@ -14223,13 +14301,24 @@ inline Status reflection_from_json(T&& object, const char* str) {
   st.ok = !result.IsError();
 
   if (!st.ok) {
-    const auto code = result.Code();
-    const auto off = result.Offset();
+    if (const auto& missing = handler.missing_field(); missing.has_value()) {
+      // Prefer the structured field-name report over rapidjson's generic
+      // `kParseErrorTermination`, which is what a strict-mode abort maps to.
+      st.error.kind = ErrorKind::MissingRequiredField;
+      st.error.field_name = *missing;
+      st.error.message = "Missing required field: " + *missing;
+      st.error.offset = result.Offset();
+      ::std::tie(st.error.line, st.error.column) =
+          offset_to_linecol(str, st.error.offset);
+    } else {
+      const auto code = result.Code();
+      const auto off = result.Offset();
 
-    st.error.kind = map_kind(code);
-    st.error.offset = off;
-    ::std::tie(st.error.line, st.error.column) = offset_to_linecol(str, off);
-    st.error.message = translate_message(st.error.kind, code);
+      st.error.kind = map_kind(code);
+      st.error.offset = off;
+      ::std::tie(st.error.line, st.error.column) = offset_to_linecol(str, off);
+      st.error.message = translate_message(st.error.kind, code);
+    }
   }
   return st;
 }
@@ -14237,9 +14326,9 @@ inline Status reflection_from_json(T&& object, const char* str) {
 // Deserialization Interface
 template <detail::AggregateType T>
 inline std::pair<bool, ::std::remove_cvref_t<T>> reflection_from_json(
-    const char* str) {
+    const char* str, ParseMode mode = ParseMode::Loose) {
   T value;
-  detail::DispatchHandler handler(value);
+  detail::DispatchHandler handler(value, mode);
   ::rapidjson::StringStream ss(str);
   ::rapidjson::Reader reader;
   auto result = reader.Parse<::rapidjson::kParseDefaultFlags>(ss, handler);

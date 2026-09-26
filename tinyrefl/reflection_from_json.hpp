@@ -1,10 +1,22 @@
 #pragma once
+#include <bitset>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
 
 #include "enum_reflection.hpp"
 #include "thirdparty/rapidjson/error/en.h"
 #include "thirdparty/rapidjson/reader.h"
 #include "utils/reflection_get_tuple.hpp"
+
+namespace tinyrefl {
+// Controls how `reflection_from_json` treats fields absent from the input.
+enum class ParseMode {
+  Loose,   // Default; missing fields keep their default-initialized value.
+  Strict,  // Missing non-`std::optional<T>` fields fail with `Status`/`Error`.
+};
+}  // namespace tinyrefl
 
 namespace tinyrefl::detail {
 // declear reader
@@ -128,11 +140,28 @@ class DispatchHandler
                                             DispatchHandler> {
  public:
   template <AggregateType T>
-  DispatchHandler(T& value) {
+  DispatchHandler(T& value,
+                   ::tinyrefl::ParseMode mode = ::tinyrefl::ParseMode::Loose)
+      : _mode(mode) {
     static auto member_offset_map = struct_member_offset_map<T>();
     this->push_handler(member_offset_map, value);
   }
   ~DispatchHandler() = default;
+
+ public:
+  ::tinyrefl::ParseMode mode() const { return _mode; }
+
+  // Keeps only the first missing field reported (parsing aborts globally
+  // on the first `EndObject() == false`, see `ReaderHandlerImp::EndObject`).
+  void report_missing_field(::std::string_view name) {
+    if (!_missing_field.has_value()) {
+      _missing_field.emplace(name);
+    }
+  }
+
+  const ::std::optional<::std::string>& missing_field() const {
+    return _missing_field;
+  }
 
  public:
   template <typename T>
@@ -244,6 +273,8 @@ class DispatchHandler
   ::std::vector<bool> _array_depth;
 
   bool _is_first_member = true;
+  ::tinyrefl::ParseMode _mode = ::tinyrefl::ParseMode::Loose;
+  ::std::optional<::std::string> _missing_field;
 };
 
 // ::rapidjson::BaseReaderHandler<::rapidjson::UTF8<>, ReaderHandlerImp<T,
@@ -255,6 +286,11 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   using MapType =
       ::frozen::unordered_map<::frozen::string, ValueType,
                               serializable_members_count_v<T>>;
+
+  // Indexed by the same stable per-field index as `_struct_member_offset_map`
+  // entries' `variant.index()`; true means the field is required in strict
+  // mode (i.e. not `std::optional<T>`). See `struct_required_mask`.
+  static constexpr auto kRequiredMask = struct_required_mask<T>();
 
  public:
   ReaderHandlerImp(const MapType& map_value, T& value)
@@ -432,9 +468,26 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   }
   bool Key(const char* str, ::rapidjson::SizeType length, bool /*copy*/) override {
     _iterator = _struct_member_offset_map.find(::frozen::string(str, length));
+    if (_iterator != _struct_member_offset_map.end()) {
+      _seen.set(_iterator->second.index());
+    }
     return true;
   }
-  bool EndObject(::rapidjson::SizeType /*memberCount*/) override { return true; }
+  bool EndObject(::rapidjson::SizeType /*memberCount*/) override {
+    if (_dispatch_handler->mode() == ::tinyrefl::ParseMode::Strict) {
+      for (const auto& [name, value] : _struct_member_offset_map) {
+        const auto idx = value.index();
+        if (kRequiredMask[idx] && !_seen.test(idx)) {
+          // Aborts the whole SAX parse (fail-fast); EndObject fires
+          // innermost-first, so the deepest missing field wins.
+          _dispatch_handler->report_missing_field(
+              ::std::string_view(name.data(), name.size()));
+          return false;
+        }
+      }
+    }
+    return true;
+  }
   bool StartArray() override {
     bool found = (_iterator != _struct_member_offset_map.end());
     if (found) {
@@ -538,6 +591,7 @@ struct ReaderHandlerImp<T, ::std::index_sequence<Is...>> : public IHandler {
   typename MapType::const_iterator _iterator;
   T& _value;
   DispatchHandler* _dispatch_handler = nullptr;
+  ::std::bitset<serializable_members_count_v<T>> _seen;
 };
 
 // SequenceReaderHandle
@@ -910,12 +964,16 @@ enum class ErrorKind {
   StringEscapeInvalid,  // Invalid string escape sequence
   TrailingComma,        // Trailing comma not allowed
   CommentNotAllowed,    // Comments are not allowed
+  MissingRequiredField, // Strict mode: a required field is missing
   Unknown
 };
 
 struct Error {
   ErrorKind kind = ErrorKind::None;
   ::std::string message;
+  // Only non-empty when `kind == ErrorKind::MissingRequiredField`; holds the
+  // name of the missing field as declared on the C++ struct.
+  ::std::string field_name;
   ::std::size_t offset = 0;
   ::std::size_t line = 0;
   ::std::size_t column = 0;
@@ -1001,6 +1059,8 @@ inline ::std::string translate_message(ErrorKind k,
       return "Trailing comma not allowed";
     case ErrorKind::CommentNotAllowed:
       return "Comments are not allowed in JSON";
+    case ErrorKind::MissingRequiredField:
+      return "Missing required field";
     case ErrorKind::Unknown:
       return ::std::string("Parse failed: ") +
              ::rapidjson::GetParseError_En(code);
@@ -1012,8 +1072,9 @@ inline ::std::string translate_message(ErrorKind k,
 
 // Deserialization Interface
 template <detail::AggregateType T>
-inline Status reflection_from_json(T&& object, const char* str) {
-  detail::DispatchHandler handler(object);
+inline Status reflection_from_json(T&& object, const char* str,
+                                    ParseMode mode = ParseMode::Loose) {
+  detail::DispatchHandler handler(object, mode);
   ::rapidjson::StringStream ss(str);
   ::rapidjson::Reader reader;
   auto result = reader.Parse<::rapidjson::kParseDefaultFlags>(ss, handler);
@@ -1022,13 +1083,24 @@ inline Status reflection_from_json(T&& object, const char* str) {
   st.ok = !result.IsError();
 
   if (!st.ok) {
-    const auto code = result.Code();
-    const auto off = result.Offset();
+    if (const auto& missing = handler.missing_field(); missing.has_value()) {
+      // Prefer the structured field-name report over rapidjson's generic
+      // `kParseErrorTermination`, which is what a strict-mode abort maps to.
+      st.error.kind = ErrorKind::MissingRequiredField;
+      st.error.field_name = *missing;
+      st.error.message = "Missing required field: " + *missing;
+      st.error.offset = result.Offset();
+      ::std::tie(st.error.line, st.error.column) =
+          offset_to_linecol(str, st.error.offset);
+    } else {
+      const auto code = result.Code();
+      const auto off = result.Offset();
 
-    st.error.kind = map_kind(code);
-    st.error.offset = off;
-    ::std::tie(st.error.line, st.error.column) = offset_to_linecol(str, off);
-    st.error.message = translate_message(st.error.kind, code);
+      st.error.kind = map_kind(code);
+      st.error.offset = off;
+      ::std::tie(st.error.line, st.error.column) = offset_to_linecol(str, off);
+      st.error.message = translate_message(st.error.kind, code);
+    }
   }
   return st;
 }
@@ -1036,9 +1108,9 @@ inline Status reflection_from_json(T&& object, const char* str) {
 // Deserialization Interface
 template <detail::AggregateType T>
 inline std::pair<bool, ::std::remove_cvref_t<T>> reflection_from_json(
-    const char* str) {
+    const char* str, ParseMode mode = ParseMode::Loose) {
   T value;
-  detail::DispatchHandler handler(value);
+  detail::DispatchHandler handler(value, mode);
   ::rapidjson::StringStream ss(str);
   ::rapidjson::Reader reader;
   auto result = reader.Parse<::rapidjson::kParseDefaultFlags>(ss, handler);
